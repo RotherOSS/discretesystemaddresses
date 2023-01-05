@@ -13,5 +13,7 @@
     <Filelist>
         <!-- Config -->
         <File Permission="644" Location="Kernel/Config/Files/XML/SystemAddressPoolCommunication.xml"/>
+        <!-- System -->
+        <File Permission="644" Location="Custom/Kernel/System/PostMaster.pm"/>
     </Filelist>
 </otobo_package>
