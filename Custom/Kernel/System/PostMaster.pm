@@ -128,6 +128,9 @@ sub new {
         }
     }
 
+    # get email params
+    $Self->{EmailParams} = $Self->GetEmailParams();
+
     return $Self;
 }
 
@@ -157,42 +160,48 @@ sub Run {
     my @Return;
 
     # ConfigObject section / get params
-    my $GetParam = $Self->GetEmailParams();
+    my $GetParam = $Self->{EmailParams};
 
     # get config objects
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
     # check system addresses in pool
-    my @FilteredAddresses;
-    my $Pools          = $ConfigObject->Get('SystemAddress::Pools');
-    my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam->{To} );
-    my @PoolNames;
-    EMAIL:
-    for my $Email ( @EmailAddresses ) {
+    if ( !$Self->{AddressCount} ) {
+        my @FilteredAddresses;
+        my $Pools          = $ConfigObject->Get('SystemAddress::Pools');
+        my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam->{To} );
+        my @PoolNames;
+        EMAIL:
+        for my $Email ( @EmailAddresses ) {
 
-        next EMAIL if !$Email;
+            next EMAIL if !$Email;
 
-        my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
 
-        next EMAIL if !$Address;
+            next EMAIL if !$Address;
 
-        # use the first found address of every pool
-        for my $Pool ( keys %{$Pools} ) {
-            if ( grep( /^$Address$/, @{ $Pools->{$Pool} } ) ) {
-                if ( !grep( /^$Pool$/, @PoolNames ) ) {
-                    push(@FilteredAddresses, $Address);
-                    push(@PoolNames, $Pool);
+            # use the first found address of every pool
+            for my $Pool ( keys %{$Pools} ) {
+                if ( grep( /^$Address$/, @{ $Pools->{$Pool} } ) ) {
+                    if ( !grep( /^$Pool$/, @PoolNames ) ) {
+                        push(@FilteredAddresses, $Address);
+                        push(@PoolNames, $Pool);
+                    }
                 }
             }
         }
-    }
+        $Self->{AddressCount} = scalar @FilteredAddresses;
 
-    my $ToString = $GetParam->{To};
-    for my $FilteredAddress ( @FilteredAddresses ) {
-        $GetParam->{To} = $ToString;
-        $GetParam->{To} =~ s/$FilteredAddress,\s//g;
-        $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
-        $Kernel::OM->Get('Kernel::System::Log')->Dumper("To: $FilteredAddress - ", $GetParam->{To});
+        my $ToString = $GetParam->{To};
+        for my $FilteredAddress ( @FilteredAddresses ) {
+            $GetParam->{To} = $ToString;
+            $GetParam->{To} =~ s/$FilteredAddress,\s//g;
+            $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
+            $Self->Run();
+            $Self->{AddressCount}--;
+        }
+
+        return 1;
     }
 
     # check if follow up
