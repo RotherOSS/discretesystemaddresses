@@ -166,42 +166,76 @@ sub Run {
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
     # check system addresses in pool
-    if ( !$Self->{AddressCount} ) {
-        my @FilteredAddresses;
-        my $Pools          = $ConfigObject->Get('SystemAddress::Pools');
-        my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam->{To} );
-        my @PoolNames;
-        EMAIL:
-        for my $Email ( @EmailAddresses ) {
+    my $Pools = $ConfigObject->Get('SystemAddress::Pools');
+    if ( IsHashRefWithData($Pools) ) {
+        if ( !$Self->{AddressCount} ) {
+            my @FilteredAddresses;
+            my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam->{To} );
+            my @PoolNames;
+            EMAIL:
+            for my $Email ( @EmailAddresses ) {
 
-            next EMAIL if !$Email;
+                next EMAIL if !$Email;
 
-            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+                my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
 
-            next EMAIL if !$Address;
+                next EMAIL if !$Address;
 
-            # use the first found address of every pool
-            for my $Pool ( keys %{$Pools} ) {
-                if ( grep( /^$Address$/, @{ $Pools->{$Pool} } ) ) {
-                    if ( !grep( /^$Pool$/, @PoolNames ) ) {
-                        push(@FilteredAddresses, $Address);
-                        push(@PoolNames, $Pool);
+                # use the first found address of every pool
+                for my $Pool ( keys %{$Pools} ) {
+                    if ( grep( /^$Address$/, @{ $Pools->{$Pool} } ) ) {
+                        if ( !grep( /^$Pool$/, @PoolNames ) ) {
+                            push(@FilteredAddresses, $Address);
+                            push(@PoolNames, $Pool);
+                        }
                     }
                 }
             }
-        }
-        $Self->{AddressCount} = scalar @FilteredAddresses;
+            $Self->{AddressCount} = scalar @FilteredAddresses;
 
-        my $ToString = $GetParam->{To};
-        for my $FilteredAddress ( @FilteredAddresses ) {
-            $GetParam->{To} = $ToString;
-            $GetParam->{To} =~ s/$FilteredAddress,\s//g;
-            $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
-            $Self->Run();
-            $Self->{AddressCount}--;
-        }
+            my $ToString = $GetParam->{To};
+            my $MessageStatus = 'Successful';
+            for my $FilteredAddress ( @FilteredAddresses ) {
 
-        return 1;
+                # create new communication log for every article
+                my $CommunicationLogObject = $Kernel::OM->Create(
+                    'Kernel::System::CommunicationLog',
+                    ObjectParams => {
+                        Transport   => 'Email',
+                        Direction   => 'Incoming',
+                        AccountType => 'STDIN',
+                    },
+                );
+                $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+                $Self->{CommunicationLogObject} = $CommunicationLogObject;
+
+                # create needed objects
+                $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
+                $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
+                $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
+                $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
+
+                $GetParam->{To} = $ToString;
+                $GetParam->{To} =~ s/$FilteredAddress,\s//g;
+                $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
+
+                my @Success = eval {
+                    $Self->Run( QueueID => $Param{QueueID} || 0 );
+                };
+                if ( !$Success[0] ) {
+                    $MessageStatus = 'Failed';
+                }
+                $CommunicationLogObject->ObjectLogStop(
+                    ObjectLogType => 'Message',
+                    Status        => $MessageStatus,
+                );
+                $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
+
+                $Self->{AddressCount}--;
+            }
+
+            return 1;
+        }
     }
 
     # check if follow up
