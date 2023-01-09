@@ -131,8 +131,9 @@ sub new {
     # get email params
     $Self->{EmailParams} = $Self->GetEmailParams();
 
-    # get first communication log connection id
-    $Self->{FirstCLConnID} = $Self->{CommunicationLogObject}->{Current}->{Connection};
+    # get first communication log communication / connection id
+    $Self->{FirstCommunicationID} = $Self->{CommunicationLogObject}->{CommunicationID};
+    $Self->{FirstConnectionID}    = $Self->{CommunicationLogObject}->{Current}->{Connection};
 
     return $Self;
 }
@@ -159,8 +160,6 @@ return params
 
 sub Run {
     my ( $Self, %Param ) = @_;
-
-    $Kernel::OM->Get('Kernel::System::Log')->Dumper("CommunicationLogObject_PostMaster: ", $Self->{CommunicationLogObject});
 
     my @Return;
 
@@ -198,8 +197,10 @@ sub Run {
             }
             $Self->{AddressCount} = scalar @FilteredAddresses;
 
-            my $ToString = $GetParam->{To};
+            my $ToString      = $GetParam->{To};
             my $MessageStatus = 'Successful';
+            my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
+                "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
             for my $FilteredAddress ( @FilteredAddresses ) {
 
                 # create new communication log for every article
@@ -212,8 +213,13 @@ sub Run {
                     },
                 );
                 $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
-                # $CommunicationLogObject->{Current}->{Connection} = $Self->{FirstCLConnID};
-                $Self->{CommunicationLogObject}                  = $CommunicationLogObject;
+                $CommunicationLogObject->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
+                    Value         => "For more details see: $DetailsLink",
+                );
+                $Self->{CommunicationLogObject} = $CommunicationLogObject;
 
                 # create needed objects
                 $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
