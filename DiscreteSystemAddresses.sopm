@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_package version="1.0">
-    <Name>SystemAddressPoolCommunication</Name>
+    <Name>DiscreteSystemAddresses</Name>
     <Version>10.1.1</Version>
     <Framework>10.1.x</Framework>
     <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://rother-oss.com/</URL>
     <License>GNU AFFERO GENERAL PUBLIC LICENSE Version 3, November 2007</License>
-    <Description Lang="en">Allows entities to communicate using a pool of system addresses.</Description>
-    <Description Lang="de">Ermöglicht die Kommunikation unter Entitäten über einen Pool an Systemadressen.</Description>
+    <Description Lang="en">Treat system addresses as separate entities, allowing to send emails from one to another, and treat incoming emails independently for each.</Description>
+    <Description Lang="de">Es werden Systemadressen als separate Einheiten betrachtet, sodass E-Mails von einer zur anderen gesendet und eingehende E-Mails unabhängig voneinander behandelt werden können.</Description>
     <IntroInstall Type="pre" Lang="en" Title="Information"><![CDATA[<br><br> Thank you for choosing our package!<br>For more Information regarding our services check <br><br><div style="margin-left: 40px;"><a href="https://rother-oss.com/">https://rother-oss.com/</a></div><br><br>]]></IntroInstall>
     <IntroInstall Type="pre" Lang="de" Title="Information"><![CDATA[<br><br> Vielen Dank dass Sie sich f&uuml;r unser Paket entschieden haben!<br>F&uuml;r mehr Informationen zu unseren Diensleistungen besuchen Sie: <br><br><div style="margin-left: 40px;"><a href="https://rother-oss.com/">https://rother-oss.com/</a></div><br><br>]]></IntroInstall>
     <Filelist>
         <!-- Config -->
-        <File Permission="644" Location="Kernel/Config/Files/XML/SystemAddressPoolCommunication.xml"/>
+        <File Permission="644" Location="Kernel/Config/Files/XML/DiscreteSystemAddresses.xml"/>
         <!-- System -->
         <File Permission="644" Location="Custom/Kernel/System/PostMaster.pm"/>
     </Filelist>

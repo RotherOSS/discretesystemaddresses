@@ -131,6 +131,9 @@ sub new {
     # get email params
     $Self->{EmailParams} = $Self->GetEmailParams();
 
+    # get first communication log connection id
+    $Self->{FirstCLConnID} = $Self->{CommunicationLogObject}->{Current}->{Connection};
+
     return $Self;
 }
 
@@ -156,6 +159,8 @@ return params
 
 sub Run {
     my ( $Self, %Param ) = @_;
+
+    $Kernel::OM->Get('Kernel::System::Log')->Dumper("CommunicationLogObject_PostMaster: ", $Self->{CommunicationLogObject});
 
     my @Return;
 
@@ -207,7 +212,8 @@ sub Run {
                     },
                 );
                 $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
-                $Self->{CommunicationLogObject} = $CommunicationLogObject;
+                # $CommunicationLogObject->{Current}->{Connection} = $Self->{FirstCLConnID};
+                $Self->{CommunicationLogObject}                  = $CommunicationLogObject;
 
                 # create needed objects
                 $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
