@@ -245,8 +245,14 @@ sub Run {
 
                 $Self->{AddressCount}--;
             }
+            if ( @FilteredAddresses ) {
 
-            return 1;
+                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                    Priority => 'info',
+                    Message  => "SystemAddressPoolCheck finished!",
+                );
+                return 1;
+            }
         }
     }
 
