@@ -195,62 +195,64 @@ sub Run {
                     }
                 }
             }
-            $Self->{AddressCount} = scalar @FilteredAddresses;
-
-            my $ToString      = $GetParam->{To};
-            my $MessageStatus = 'Successful';
-            my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
-                "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
-            for my $FilteredAddress ( @FilteredAddresses ) {
-
-                # create new communication log for every article
-                my $CommunicationLogObject = $Kernel::OM->Create(
-                    'Kernel::System::CommunicationLog',
-                    ObjectParams => {
-                        Transport   => 'Email',
-                        Direction   => 'Incoming',
-                        AccountType => 'STDIN',
-                    },
-                );
-                $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
-                $CommunicationLogObject->ObjectLog(
-                    ObjectLogType => 'Message',
-                    Priority      => 'Debug',
-                    Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
-                    Value         => "For more details see: $DetailsLink",
-                );
-                $Self->{CommunicationLogObject} = $CommunicationLogObject;
-
-                # create needed objects
-                $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
-                $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
-                $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
-                $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
-
-                $GetParam->{To} = $ToString;
-                $GetParam->{To} =~ s/$FilteredAddress,\s//g;
-                $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
-
-                my @Success = eval {
-                    $Self->Run( QueueID => $Param{QueueID} || 0 );
-                };
-                if ( !$Success[0] ) {
-                    $MessageStatus = 'Failed';
-                }
-                $CommunicationLogObject->ObjectLogStop(
-                    ObjectLogType => 'Message',
-                    Status        => $MessageStatus,
-                );
-                $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
-
-                $Self->{AddressCount}--;
-            }
             if ( @FilteredAddresses ) {
+
+                $Self->{AddressCount} = scalar @FilteredAddresses;
+
+                my $ToString      = $GetParam->{To};
+                my $MessageStatus = 'Successful';
+                my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
+                    "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
+                for my $FilteredAddress ( @FilteredAddresses ) {
+
+                    # create new communication log for every article
+                    my $CommunicationLogObject = $Kernel::OM->Create(
+                        'Kernel::System::CommunicationLog',
+                        ObjectParams => {
+                            Transport   => 'Email',
+                            Direction   => 'Incoming',
+                            AccountType => 'STDIN',
+                        },
+                    );
+                    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+                    $CommunicationLogObject->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Debug',
+                        Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
+                        Value         => "For more details see: $DetailsLink",
+                    );
+                    $Self->{CommunicationLogObject} = $CommunicationLogObject;
+
+                    # create needed objects
+                    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
+                    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
+                    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
+                    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
+
+                    $GetParam->{To} = $ToString;
+                    $GetParam->{To} =~ s/$FilteredAddress,\s//g;
+                    $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
+
+                    my @Success = eval {
+                        $Self->Run( QueueID => $Param{QueueID} || 0 );
+                    };
+                    if ( !$Success[0] ) {
+                        $MessageStatus = 'Failed';
+                    }
+                    $CommunicationLogObject->ObjectLogStop(
+                        ObjectLogType => 'Message',
+                        Status        => $MessageStatus,
+                    );
+                    $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
+
+                    $Self->{AddressCount}--;
+                }
 
                 $Kernel::OM->Get('Kernel::System::Log')->Log(
                     Priority => 'info',
                     Message  => "SystemAddressPoolCheck finished!",
                 );
+
                 return 1;
             }
         }
