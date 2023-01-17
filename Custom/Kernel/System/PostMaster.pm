@@ -199,10 +199,13 @@ sub Run {
 
                 $Self->{AddressCount} = scalar @FilteredAddresses;
 
-                my $ToString      = $GetParam->{To};
-                my $MessageStatus = 'Successful';
+                # create connection details link
                 my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
                     "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
+
+                my @TicketIDs;
+                my $ToString      = $GetParam->{To};
+                my $MessageStatus = 'Successful';
                 for my $FilteredAddress ( @FilteredAddresses ) {
 
                     # create new communication log for every article
@@ -229,16 +232,23 @@ sub Run {
                     $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
                     $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
 
+                    # set filtered address at first in To string
                     $GetParam->{To} = $ToString;
                     $GetParam->{To} =~ s/$FilteredAddress,\s//g;
                     $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
 
+                    # run post master
                     my @Success = eval {
                         $Self->Run( QueueID => $Param{QueueID} || 0 );
                     };
                     if ( !$Success[0] ) {
                         $MessageStatus = 'Failed';
                     }
+                    else {
+                        push(@TicketIDs, $Success[1]);
+                    }
+
+                    # stop object / communication log
                     $CommunicationLogObject->ObjectLogStop(
                         ObjectLogType => 'Message',
                         Status        => $MessageStatus,
@@ -246,6 +256,36 @@ sub Run {
                     $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
 
                     $Self->{AddressCount}--;
+                }
+
+                if ( @TicketIDs ) {
+
+                    # link tickets
+                    for my $SourceTicketID ( @TicketIDs ) {
+                        for my $TargetTicketID ( @TicketIDs ) {
+
+                            if ( $SourceTicketID == $TargetTicketID ) {
+                                next;
+                            }
+
+                            my $Success = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkAdd(
+                                SourceObject => 'Ticket',
+                                SourceKey    => $SourceTicketID,
+                                TargetObject => 'Ticket',
+                                TargetKey    => $TargetTicketID,
+                                Type         => 'Interdivisional',
+                                State        => 'Valid',
+                                UserID       => $Self->{PostmasterUserID},
+                            );
+                            if ( !$Success ) {
+
+                                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                                    Priority      => 'error',
+                                    Message         => "Can't create a link from ticket (ID: $SourceTicketID) to ticket (ID: $TargetTicketID)",
+                                );
+                            }
+                        }
+                    }
                 }
 
                 $Kernel::OM->Get('Kernel::System::Log')->Log(

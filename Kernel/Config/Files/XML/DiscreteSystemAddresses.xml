@@ -28,4 +28,15 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="LinkObject::PossibleLink###2200" Required="0" Valid="1">
+        <Description Translatable="1">Links 2 tickets with a "Interdivisional" type link.</Description>
+        <Navigation>Core::LinkObject</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Object1">Ticket</Item>
+                <Item Key="Object2">Ticket</Item>
+                <Item Key="Type">Interdivisional</Item>
+            </Hash>
+        </Value>
+    </Setting>
 </otobo_config>
