@@ -19,6 +19,8 @@ package Kernel::System::SystemAddress;
 use strict;
 use warnings;
 
+use Kernel::System::VariableCheck qw(IsHashRefWithData);
+
 our @ObjectDependencies = (
     'Kernel::System::Cache',
     'Kernel::System::DB',
