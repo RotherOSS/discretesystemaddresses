@@ -13,6 +13,8 @@
     <Filelist>
         <!-- Config -->
         <File Permission="644" Location="Kernel/Config/Files/XML/DiscreteSystemAddresses.xml"/>
+        <!-- Language -->
+        <File Permission="644" Location="Kernel/Language/de_DiscreteSystemAddresses.pm"/>
         <!-- System -->
         <File Permission="644" Location="Custom/Kernel/System/PostMaster.pm"/>
     </Filelist>
