@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2022 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -25,7 +25,7 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
-use Kernel::System::VariableCheck qw(IsHashRefWithData);
+use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -163,143 +163,105 @@ sub Run {
 
     my @Return;
 
-    # ConfigObject section / get params
+    # get email params
     my $GetParam = $Self->{EmailParams};
 
-    # get config objects
+    # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
-
-    # check system addresses in pool
-    my $Pools = $ConfigObject->Get('SystemAddress::Pools');
-    if ( IsHashRefWithData($Pools) ) {
-        if ( !$Self->{AddressCount} ) {
-            my @FilteredAddresses;
-            my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam->{To} );
-            my @PoolNames;
-            EMAIL:
-            for my $Email ( @EmailAddresses ) {
-
-                next EMAIL if !$Email;
-
-                my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
-
-                next EMAIL if !$Address;
-
-                # use the first found address of every pool
-                for my $Pool ( keys %{$Pools} ) {
-                    if ( grep( /^$Address$/, @{ $Pools->{$Pool} } ) ) {
-                        if ( !grep( /^$Pool$/, @PoolNames ) ) {
-                            push(@FilteredAddresses, $Address);
-                            push(@PoolNames, $Pool);
-                        }
-                    }
-                }
-            }
-            if ( @FilteredAddresses ) {
-
-                $Self->{AddressCount} = scalar @FilteredAddresses;
-
-                # create connection details link
-                my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
-                    "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
-
-                my @TicketIDs;
-                my $ToString      = $GetParam->{To};
-                my $MessageStatus = 'Successful';
-                for my $FilteredAddress ( @FilteredAddresses ) {
-
-                    # create new communication log for every article
-                    my $CommunicationLogObject = $Kernel::OM->Create(
-                        'Kernel::System::CommunicationLog',
-                        ObjectParams => {
-                            Transport   => 'Email',
-                            Direction   => 'Incoming',
-                            AccountType => 'STDIN',
-                        },
-                    );
-                    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
-                    $CommunicationLogObject->ObjectLog(
-                        ObjectLogType => 'Message',
-                        Priority      => 'Debug',
-                        Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
-                        Value         => "For more details see: $DetailsLink",
-                    );
-                    $Self->{CommunicationLogObject} = $CommunicationLogObject;
-
-                    # create needed objects
-                    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
-                    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
-                    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
-                    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
-
-                    # set filtered address at first in To string
-                    $GetParam->{To} = $ToString;
-                    $GetParam->{To} =~ s/$FilteredAddress,\s//g;
-                    $GetParam->{To} = $FilteredAddress . ", " . $GetParam->{To};
-
-                    # run post master
-                    my @Success = eval {
-                        $Self->Run( QueueID => $Param{QueueID} || 0 );
-                    };
-                    if ( !$Success[0] ) {
-                        $MessageStatus = 'Failed';
-                    }
-                    else {
-                        push(@TicketIDs, $Success[1]);
-                    }
-
-                    # stop object / communication log
-                    $CommunicationLogObject->ObjectLogStop(
-                        ObjectLogType => 'Message',
-                        Status        => $MessageStatus,
-                    );
-                    $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
-
-                    $Self->{AddressCount}--;
-                }
-
-                if ( @TicketIDs ) {
-
-                    # link tickets
-                    for my $SourceTicketID ( @TicketIDs ) {
-                        for my $TargetTicketID ( @TicketIDs ) {
-
-                            if ( $SourceTicketID == $TargetTicketID ) {
-                                next;
-                            }
-
-                            my $Success = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkAdd(
-                                SourceObject => 'Ticket',
-                                SourceKey    => $SourceTicketID,
-                                TargetObject => 'Ticket',
-                                TargetKey    => $TargetTicketID,
-                                Type         => 'Interdivisional',
-                                State        => 'Valid',
-                                UserID       => $Self->{PostmasterUserID},
-                            );
-                            if ( !$Success ) {
-
-                                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                                    Priority      => 'error',
-                                    Message         => "Can't create a link from ticket (ID: $SourceTicketID) to ticket (ID: $TargetTicketID)",
-                                );
-                            }
-                        }
-                    }
-                }
-
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'info',
-                    Message  => "SystemAddressPoolCheck finished!",
-                );
-
-                return 1;
-            }
-        }
-    }
 
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
+
+    # check system addresses in pool
+    if ( !$Self->{AddressCount} ) {
+
+        # filter system addresses
+        my @FilteredAddresses = $Self->_FilterSystemAddresses(
+            ToString => $GetParam->{To},
+        );
+        if ( @FilteredAddresses ) {
+
+            # set address count
+            $Self->{AddressCount} = scalar @FilteredAddresses;
+
+            # get objects
+            my $LinkObject          = $Kernel::OM->Get('Kernel::System::LinkObject');
+            my $TicketObject        = $Kernel::OM->Get('Kernel::System::Ticket');
+            my $SystemAddressObject = $Kernel::OM->Get('Kernel::System::SystemAddress');
+
+            # get mail queue id
+            my $MailQueueID;
+            if ( $TicketID ) {
+                $MailQueueID = $TicketObject->TicketQueueID(
+                    TicketID => $TicketID,
+                );
+            }
+
+            my @GetTicketIDs;
+            my $ToString = $GetParam->{To};
+            for my $FilteredAddress ( @FilteredAddresses ) {
+
+                # system address follow-up check
+                my $AddressQueueID = $SystemAddressObject->SystemAddressQueueID( Address => $FilteredAddress );
+                if (
+                    ( $MailQueueID && $AddressQueueID )
+                    &&
+                    ( $MailQueueID != $AddressQueueID )
+                ) {
+
+                    # check linked tickets
+                    my %LinkedTickets = $LinkObject->LinkKeyListWithData(
+                        Object1   => 'Ticket',
+                        Key1      => $TicketID,
+                        Object2   => 'Ticket',
+                        State     => 'Valid',
+                        UserID    => $Self->{PostmasterUserID},
+                    );
+
+                    for my $LinkedTicket ( keys %LinkedTickets ) {
+
+                        my $LTQueueID = $LinkedTickets{$LinkedTicket}{QueueID};
+                        if ( $MailQueueID != $LTQueueID ) {
+                            next;
+                        }
+
+                        # follow-up for linked ticket
+                        my $LTTicketID = $LinkedTickets{$LinkedTicket}{TicketID};
+
+                        $Kernel::OM->Get('Kernel::System::Log')->Dumper("LinkedTicket_QueueID: ", $LTQueueID);
+                        $Kernel::OM->Get('Kernel::System::Log')->Dumper("LinkedTicket_TicketID: ", $LTTicketID);
+                    }
+
+                    # $Kernel::OM->Get('Kernel::System::Log')->Dumper("MailQueueID: ", $MailQueueID);
+                    # $Kernel::OM->Get('Kernel::System::Log')->Dumper("AddressQueueID: ", $AddressQueueID);
+                }
+
+                my $GetTicketID = $Self->_RecursivePostMasterRun(
+                    GetParam          => $GetParam,
+                    ToString          => $ToString,
+                    QueueID           => $Param{QueueID},
+                    SystemPoolAddress => $FilteredAddress,
+                );
+                push (@GetTicketIDs, $GetTicketID);
+
+                $Self->{AddressCount}--;
+            }
+
+            if ( @GetTicketIDs ) {
+
+                $Self->_InterdivisionalTicketLinkAdd(
+                    TicketIDs => \@GetTicketIDs,
+                );
+            }
+
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'info',
+                Message  => "SystemAddressPoolCheck finished!",
+            );
+
+            return 1;
+        }
+    }
 
     # run all PreFilterModules (modify email params)
     if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
@@ -810,6 +772,225 @@ sub GetEmailParams {
     $GetParam{Attachment} = \@Attachments;
 
     return \%GetParam;
+}
+
+=head2 _FilterSystemAddresses()
+
+Filter system addresses from every pool based on To field
+
+    my @FilteredAddresses = $PostMasterObject->_FilterSystemAddresses(
+        ToString           => 'test@example.com, test2@example.com ...',
+        SystemAddressPools => $SystemAddressPools,
+    );
+
+=cut
+
+sub _FilterSystemAddresses {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{ToString} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need ToString!",
+        );
+        return;
+    }
+
+    # get config object
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
+    my $SystemAddressPools = $ConfigObject->Get('SystemAddress::Pools');
+    if ( !IsHashRefWithData($SystemAddressPools) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "SystemAddress::Pools is not a hash ref!",
+        );
+        return;
+    }
+
+    my @FilteredAddresses;
+    my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $Param{ToString} );
+    my @SAPoolNames;
+    EMAIL:
+    for my $Email ( @EmailAddresses ) {
+
+        next EMAIL if !$Email;
+
+        my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+
+        next EMAIL if !$Address;
+
+        # use the first found address of every pool
+        for my $SAPool ( keys %{ $SystemAddressPools } ) {
+            if ( grep( /^$Address$/, @{ $SystemAddressPools->{$SAPool} } ) ) {
+                if ( !grep( /^$SAPool$/, @SAPoolNames ) ) {
+                    push(@FilteredAddresses, $Address);
+                    push(@SAPoolNames, $SAPool);
+                }
+            }
+        }
+    }
+
+    return @FilteredAddresses;
+}
+
+=head2 _RecursivePostMasterRun()
+
+Recursive postmaster run for system address pool
+
+    my $TicketID = $PostMasterObject->_RecursivePostMasterRun(
+        GetParam          => $GetParam,
+        ToString          => 'test@example.com, test2@example.com ...',
+        SystemPoolAddress => 'test@example.com',
+    );
+
+=cut
+
+sub _RecursivePostMasterRun {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    for my $Needed (qw(GetParam ToString SystemPoolAddress)) {
+        if ( !$Param{$Needed} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Needed!",
+            );
+            return;
+        }
+    }
+
+    # get config object
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
+    my $TicketID;
+
+    # create new communication log for every article
+    my $CommunicationLogObject = $Kernel::OM->Create(
+        'Kernel::System::CommunicationLog',
+        ObjectParams => {
+            Transport   => 'Email',
+            Direction   => 'Incoming',
+            AccountType => 'STDIN',
+        },
+    );
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
+    # create connection details link
+    my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
+        "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
+
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
+        Value         => "For more details see: $DetailsLink",
+    );
+    $Self->{CommunicationLogObject} = $CommunicationLogObject;
+
+    # create needed objects
+    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
+    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
+    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
+    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
+
+    # set filtered address at first in To string
+    $Param{GetParam}->{To} = $Param{ToString};
+    $Param{GetParam}->{To} =~ s/$Param{SystemPoolAddress},\s//g;
+    $Param{GetParam}->{To} = $Param{SystemPoolAddress} . ", " . $Param{GetParam}->{To};
+
+    # set status message
+    my $MessageStatus = 'Successful';
+
+    # run post master
+    my @Success = eval {
+        $Self->Run( QueueID => $Param{QueueID} || 0 );
+    };
+    if ( !$Success[0] ) {
+        $MessageStatus = 'Failed';
+    }
+    else {
+        $TicketID = $Success[1];
+    }
+
+    # stop object / communication log
+    $CommunicationLogObject->ObjectLogStop(
+        ObjectLogType => 'Message',
+        Status        => $MessageStatus,
+    );
+    $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
+
+    return $TicketID;
+}
+
+=head2 _InterdivisionalTicketLinkAdd()
+
+Add link for system address pool tickets with new 'Interdivisional' type
+
+    $PostMasterObject->_InterdivisionalTicketLinkAdd(
+        TicketIDs => [1, 5, 8],
+    );
+
+=cut
+
+sub _InterdivisionalTicketLinkAdd {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{TicketIDs} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need TicketIDs!",
+        );
+        return;
+    }
+
+    if ( !IsArrayRefWithData($Param{TicketIDs}) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need TicketIDs as array ref!",
+        );
+        return;
+    }
+
+    my @TicketIDs = @{ $Param{TicketIDs} };
+    if ( scalar(@TicketIDs) < 2 ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need at least 2 ticket ids!",
+        );
+        return;
+    }
+
+    # link tickets
+    for my $SourceTicketID ( @TicketIDs ) {
+        for my $TargetTicketID ( @TicketIDs ) {
+
+            if ( $SourceTicketID == $TargetTicketID ) {
+                next;
+            }
+
+            my $Success = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkAdd(
+                SourceObject => 'Ticket',
+                SourceKey    => $SourceTicketID,
+                TargetObject => 'Ticket',
+                TargetKey    => $TargetTicketID,
+                Type         => 'Interdivisional',
+                State        => 'Valid',
+                UserID       => $Self->{PostmasterUserID},
+            );
+            if ( !$Success ) {
+
+                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                    Priority      => 'error',
+                    Message         => "Can't create a interdivisional link from ticket (ID: $SourceTicketID) to ticket (ID: $TargetTicketID)",
+                );
+            }
+        }
+    }
+
+    return 1;
 }
 
 1;
