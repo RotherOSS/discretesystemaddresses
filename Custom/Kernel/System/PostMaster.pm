@@ -191,18 +191,40 @@ sub Run {
 
             # get mail queue id
             my $MailQueueID;
-            if ( $TicketID ) {
+            my @GetTicketIDs;
+            my $CleanUpSubject;
+            if ( $Tn && $TicketID ) {
+
+                # get mail queue id
                 $MailQueueID = $TicketObject->TicketQueueID(
                     TicketID => $TicketID,
                 );
+
+                # subject clean up
+                $CleanUpSubject = $TicketObject->TicketSubjectClean(
+                    TicketNumber => $Tn,
+                    Subject      => $GetParam->{Subject},
+                );
+
+                # create follow-up
+                my $GetTicketID = $Self->_RecursivePostMasterRun(
+                    GetParam => $GetParam,
+                );
+                push (@GetTicketIDs, $GetTicketID);
+
+                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                    Priority => 'info',
+                    Message  => "SystemAddressPoolCheck - created original mail as follow-up (ID: $GetTicketID)!",
+                );
             }
 
-            my @GetTicketIDs;
             my $ToString = $GetParam->{To};
             for my $FilteredAddress ( @FilteredAddresses ) {
 
                 # system address follow-up check
-                my $AddressQueueID = $SystemAddressObject->SystemAddressQueueID( Address => $FilteredAddress );
+                my $AddressQueueID = $SystemAddressObject->SystemAddressQueueID(
+                    Address => $FilteredAddress,
+                );
                 if (
                     ( $MailQueueID && $AddressQueueID )
                     &&
@@ -215,48 +237,89 @@ sub Run {
                         Key1      => $TicketID,
                         Object2   => 'Ticket',
                         State     => 'Valid',
+                        Type      => 'Interdivisional',
                         UserID    => $Self->{PostmasterUserID},
                     );
 
+                    my $LTCount = keys %LinkedTickets;
                     for my $LinkedTicket ( keys %LinkedTickets ) {
 
                         my $LTQueueID = $LinkedTickets{$LinkedTicket}{QueueID};
-                        if ( $MailQueueID != $LTQueueID ) {
+                        if ( !$LTQueueID || $AddressQueueID != $LTQueueID ) {
+                            $LTCount--;
                             next;
                         }
 
                         # follow-up for linked ticket
-                        my $LTTicketID = $LinkedTickets{$LinkedTicket}{TicketID};
+                        my $LTTicketNumber  = $LinkedTickets{$LinkedTicket}{TicketNumber};
+                        my $FollowUpSubject = $TicketObject->TicketSubjectBuild(
+                            TicketNumber => $LTTicketNumber,
+                            Subject      => $CleanUpSubject,
+                            Action       => 'Reply',
+                        );
 
-                        $Kernel::OM->Get('Kernel::System::Log')->Dumper("LinkedTicket_QueueID: ", $LTQueueID);
-                        $Kernel::OM->Get('Kernel::System::Log')->Dumper("LinkedTicket_TicketID: ", $LTTicketID);
+                        $GetParam->{Subject} = $FollowUpSubject;
+                        my $GetTicketID = $Self->_RecursivePostMasterRun(
+                            GetParam          => $GetParam,
+                            ToString          => $ToString,
+                            SystemPoolAddress => $FilteredAddress,
+                        );
+
+                        $Kernel::OM->Get('Kernel::System::Log')->Log(
+                            Priority => 'info',
+                            Message  => "SystemAddressPoolCheck - Created follow-up in ticket (ID: $GetTicketID)!",
+                        );
                     }
 
-                    # $Kernel::OM->Get('Kernel::System::Log')->Dumper("MailQueueID: ", $MailQueueID);
-                    # $Kernel::OM->Get('Kernel::System::Log')->Dumper("AddressQueueID: ", $AddressQueueID);
-                }
+                    if ( !$LTCount ) {
 
-                my $GetTicketID = $Self->_RecursivePostMasterRun(
-                    GetParam          => $GetParam,
-                    ToString          => $ToString,
-                    QueueID           => $Param{QueueID},
-                    SystemPoolAddress => $FilteredAddress,
-                );
-                push (@GetTicketIDs, $GetTicketID);
+                        $GetParam->{Subject} = $CleanUpSubject;
+                        my $GetTicketID = $Self->_RecursivePostMasterRun(
+                            GetParam          => $GetParam,
+                            ToString          => $ToString,
+                            SystemPoolAddress => $FilteredAddress,
+                        );
+                        push (@GetTicketIDs, $GetTicketID);
+
+                        $Kernel::OM->Get('Kernel::System::Log')->Log(
+                            Priority => 'info',
+                            Message  => "SystemAddressPoolCheck - Cannot find exist linked tickets, created new ticket (ID: $GetTicketID) and will be linked to original ticket (ID: $TicketID)!",
+                        );
+                    }
+                }
+                else {
+
+                    my $GetTicketID = $Self->_RecursivePostMasterRun(
+                        GetParam          => $GetParam,
+                        ToString          => $ToString,
+                        SystemPoolAddress => $FilteredAddress,
+                    );
+                    push (@GetTicketIDs, $GetTicketID);
+
+                    $Kernel::OM->Get('Kernel::System::Log')->Log(
+                        Priority => 'info',
+                        Message  => "SystemAddressPoolCheck - Created new ticket (ID: $GetTicketID)!",
+                    );
+                }
 
                 $Self->{AddressCount}--;
             }
 
-            if ( @GetTicketIDs ) {
+            if ( scalar(@GetTicketIDs) > 1 ) {
 
                 $Self->_InterdivisionalTicketLinkAdd(
                     TicketIDs => \@GetTicketIDs,
+                );
+
+                $Kernel::OM->Get('Kernel::System::Log')->Log(
+                    Priority => 'info',
+                    Message  => "SystemAddressPoolCheck - Tickets should be linked to 'Interdivisional' type!",
                 );
             }
 
             $Kernel::OM->Get('Kernel::System::Log')->Log(
                 Priority => 'info',
-                Message  => "SystemAddressPoolCheck finished!",
+                Message  => "SystemAddressPoolCheck - Finished!",
             );
 
             return 1;
@@ -779,8 +842,7 @@ sub GetEmailParams {
 Filter system addresses from every pool based on To field
 
     my @FilteredAddresses = $PostMasterObject->_FilterSystemAddresses(
-        ToString           => 'test@example.com, test2@example.com ...',
-        SystemAddressPools => $SystemAddressPools,
+        ToString => 'test@example.com, test2@example.com ...',
     );
 
 =cut
@@ -851,14 +913,20 @@ sub _RecursivePostMasterRun {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
-    for my $Needed (qw(GetParam ToString SystemPoolAddress)) {
-        if ( !$Param{$Needed} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $Needed!",
-            );
-            return;
-        }
+    if ( !$Param{GetParam} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need GetParam!",
+        );
+        return;
+    }
+
+    if ( !IsHashRefWithData($Param{GetParam}) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need GetParam as hash ref!",
+        );
+        return;
     }
 
     # get config object
@@ -896,16 +964,18 @@ sub _RecursivePostMasterRun {
     $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
 
     # set filtered address at first in To string
-    $Param{GetParam}->{To} = $Param{ToString};
-    $Param{GetParam}->{To} =~ s/$Param{SystemPoolAddress},\s//g;
-    $Param{GetParam}->{To} = $Param{SystemPoolAddress} . ", " . $Param{GetParam}->{To};
+    if ( $Param{ToString} && $Param{SystemPoolAddress} ) {
+        $Param{GetParam}->{To} = $Param{ToString};
+        $Param{GetParam}->{To} =~ s/$Param{SystemPoolAddress},\s//g;
+        $Param{GetParam}->{To} = $Param{SystemPoolAddress} . ", " . $Param{GetParam}->{To};
+    }
 
     # set status message
     my $MessageStatus = 'Successful';
 
     # run post master
     my @Success = eval {
-        $Self->Run( QueueID => $Param{QueueID} || 0 );
+        $Self->Run();
     };
     if ( !$Success[0] ) {
         $MessageStatus = 'Failed';
