@@ -25,10 +25,7 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
-# Rother OSS / DiscreteAddresses
-#use Kernel::System::VariableCheck qw(IsHashRefWithData);
-use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
-# EO DiscreteAddresses
+use Kernel::System::VariableCheck qw(IsHashRefWithData);
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -175,8 +172,9 @@ sub Run {
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
-    # get config objects
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+    # get objects
+    my $ConfigObject      = $Kernel::OM->Get('Kernel::Config');
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
@@ -247,9 +245,9 @@ sub Run {
         # check if follow up (again, with new GetParam)
         ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
-        # Rother OSS / DiscreteAddresses
+# Rother OSS / DiscreteAddresses
         # lookup address per pool name
-        my %AddressPoolNameList = $Self->_AddressPoolNameList();
+        my %AddressPoolNameList = $AddressPoolObject->NameList();
 
         # get address of every pool
         my @FilteredAddresses = $Self->_FilterAddresses(
@@ -258,7 +256,7 @@ sub Run {
 
         if ( $TicketID ) {
 
-            $Param{AddressPool} = $Self->_AddressPoolNameLookup(
+            $Param{AddressPool} = $AddressPoolObject->NameLookup(
                 TicketID => $TicketID,
             );
         }
@@ -287,12 +285,13 @@ sub Run {
     }
     elsif ( $Param{FollowUpTicketID} ) {
 
-        ( $Tn, $TicketID ) = $Self->_FindLinkedTicket(
+        ( $Tn, $TicketID ) = $AddressPoolObject->FindLinkedTicket(
             TicketID    => $Param{FollowUpTicketID},
             AddressPool => $Param{AddressPool},
+            UserID      => $Self->{PostmasterUserID},
         );
     }
-    # EO DiscreteAddresses
+# EO DiscreteAddresses
 
     # run all PreCreateFilterModules
     if ( ref $ConfigObject->Get('PostMaster::PreCreateFilterModule') eq 'HASH' ) {
@@ -747,78 +746,6 @@ sub GetEmailParams {
 }
 
 # Rother OSS / DiscreteAddresses
-=head2 _AddressPoolNameList()
-
-Get Addresses of every pools
-
-    my %AddressPoolNameList = $PostMasterObject->_AddressPoolNameList();
-
-=cut
-
-sub _AddressPoolNameList {
-    my ( $Self, %Param ) = @_;
-
-    # get config object
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
-
-    my $AddressPools = $ConfigObject->Get('Address::Pools');
-    if ( !IsHashRefWithData($AddressPools) ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Address::Pools is not a hash ref!",
-        );
-        return;
-    }
-
-    my %AddressPoolNameList;
-    for my $PoolName ( keys %{ $AddressPools } ) {
-        for my $Address ( $AddressPools->{$PoolName}->@* ) {
-            $AddressPoolNameList{ $Address } = $PoolName;
-        }
-    }
-
-    return %AddressPoolNameList;
-}
-
-=head2 _AddressPoolNameLookup()
-
-Get address pool name of ticket
-
-    $PostMasterObject->_AddressPoolNameLookup(
-        TicketID => 4,
-    );
-
-=cut
-
-sub _AddressPoolNameLookup {
-    my ( $Self, %Param ) = @_;
-
-    # check needed stuff
-    if ( !$Param{TicketID} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need TicketID!",
-        );
-        return;
-    }
-
-    # get address pool name list
-    my %AddressPoolNameList = $Self->_AddressPoolNameList();
-
-    # get ticket queue id
-    my $QueueID = $Kernel::OM->Get('Kernel::System::Ticket')->TicketQueueID(
-        TicketID => $Param{TicketID},
-    );
-
-    # set ticket pool name
-    my %QueueData = $Kernel::OM->Get('Kernel::System::Queue')->QueueGet(
-        ID => $QueueID,
-    );
-    my $PoolName = $AddressPoolNameList{ $QueueData{Email} };
-
-    return $PoolName;
-}
-
 =head2 _FilterAddresses()
 
 Filter addresses from every pool based on To field
@@ -841,10 +768,13 @@ sub _FilterAddresses {
         return;
     }
 
+    # get object
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+
     my %PoolNameUsed;
     my @FilteredAddresses;
-    my %AddressPoolNameList = $Self->_AddressPoolNameList();
-    my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $Param{ToString} );
+    my @EmailAddresses      = $Self->{ParserObject}->SplitAddressLine( Line => $Param{ToString} );
+    my %AddressPoolNameList = $AddressPoolObject->NameList();
     if ( %AddressPoolNameList ) {
 
         EMAIL:
@@ -889,7 +819,7 @@ sub _RecursivePostMasterRun {
 
     my $TicketID;
 
-    # get config object
+    # get object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
     # create new communication log for every article
@@ -946,135 +876,6 @@ sub _RecursivePostMasterRun {
     $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
 
     return $TicketID;
-}
-
-=head2 _InterdivisionalTicketLinkAdd()
-
-Add link for address pool tickets with new 'Interdivisional' type
-
-    $PostMasterObject->_InterdivisionalTicketLinkAdd(
-        TicketIDs => [1, 5, 8],
-    );
-
-=cut
-
-sub _InterdivisionalTicketLinkAdd {
-    my ( $Self, %Param ) = @_;
-
-    # check needed stuff
-    if ( !$Param{TicketIDs} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need TicketIDs!",
-        );
-        return;
-    }
-
-    if ( !IsArrayRefWithData($Param{TicketIDs}) ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need TicketIDs as array ref!",
-        );
-        return;
-    }
-
-    my @TicketIDs = @{ $Param{TicketIDs} };
-    if ( scalar(@TicketIDs) < 2 ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need at least 2 ticket ids!",
-        );
-        return;
-    }
-
-    # link tickets
-    for my $SourceTicketID ( @TicketIDs ) {
-        for my $TargetTicketID ( @TicketIDs ) {
-
-            if ( $SourceTicketID == $TargetTicketID ) {
-                next;
-            }
-
-            my $Success = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkAdd(
-                SourceObject => 'Ticket',
-                SourceKey    => $SourceTicketID,
-                TargetObject => 'Ticket',
-                TargetKey    => $TargetTicketID,
-                Type         => 'Interdivisional',
-                State        => 'Valid',
-                UserID       => $Self->{PostmasterUserID},
-            );
-            if ( !$Success ) {
-
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority      => 'error',
-                    Message         => "Can't create a interdivisional link from ticket (ID: $SourceTicketID) to ticket (ID: $TargetTicketID)",
-                );
-            }
-        }
-    }
-
-    return 1;
-}
-
-=head2 _FindLinkedTicket()
-
-Find linked ticket with 'Interdivisional' type in address pool
-
-    $PostMasterObject->_FindLinkedTicket(
-        TicketID    => 4,
-        AddressPool => 'Pool1',
-    );
-
-=cut
-
-sub _FindLinkedTicket {
-    my ( $Self, %Param ) = @_;
-
-    # check needed stuff
-    for my $Needed (qw(TicketID AddressPool)) {
-        if ( !$Param{$Needed} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $Needed!",
-            );
-            return;
-        }
-    }
-
-    # get linked tickets
-    my %LinkedTickets = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkKeyListWithData(
-        Object1   => 'Ticket',
-        Key1      => $Param{TicketID},
-        Object2   => 'Ticket',
-        State     => 'Valid',
-        Type      => 'Interdivisional',
-        UserID    => $Self->{PostmasterUserID},
-    );
-
-    # get address pools
-    my %AddressPoolNameList = $Self->_AddressPoolNameList();
-
-    for my $LinkedTicket ( keys %LinkedTickets ) {
-
-        # get ticket number / ticket id
-        my $LTTicketID     = $LinkedTickets{$LinkedTicket}{TicketID};
-        my $LTTicketNumber = $LinkedTickets{$LinkedTicket}{TicketNumber};
-
-        my $LTPoolName = $Self->_AddressPoolNameLookup(
-            TicketID => $LTTicketID,
-        );
-        if (
-            $LTPoolName
-            &&
-            ( $LTPoolName eq $Param{AddressPool} )
-        ) {
-
-            return ( $LTTicketNumber, $LTTicketID );
-        }
-    }
-
-    return;
 }
 # EO DiscreteAddresses
 

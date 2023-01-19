@@ -26,6 +26,7 @@ our @ObjectDependencies = (
     'Kernel::System::DB',
     'Kernel::System::Log',
     'Kernel::System::Valid',
+    'Kernel::System::AddressPool',
 );
 
 =head1 NAME
@@ -380,11 +381,17 @@ sub SystemAddressIsLocalAddress {
         }
     }
 
-    # check exist address in system address pool
-    my $Pools = $Kernel::OM->Get('Kernel::Config')->Get('SystemAddress::Pools');
-    if ( IsHashRefWithData($Pools) ) {
-        for my $Pool ( keys %{$Pools} ) {
-            if ( grep( /^$Param{Address}$/, @{ $Pools->{$Pool} } ) ) {
+    # get object
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+
+    # check exist system address in pool
+    my %AddressPoolNameList = $AddressPoolObject->NameList();
+    if ( %AddressPoolNameList ) {
+
+        for my $PoolAddress ( keys %AddressPoolNameList ) {
+
+            my $PoolName = $AddressPoolNameList{$PoolAddress};
+            if ( $Param{Address} eq $PoolAddress ) {
                 return;
             }
         }
