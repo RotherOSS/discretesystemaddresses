@@ -129,9 +129,6 @@ sub new {
     }
 
 # Rother OSS / DiscreteAddresses
-    # get email params
-    $Self->{EmailParams} = $Self->GetEmailParams();
-
     # get first communication log communication / connection id
     $Self->{FirstCommunicationID} = $Self->{CommunicationLogObject}->{CommunicationID};
     $Self->{FirstConnectionID}    = $Self->{CommunicationLogObject}->{Current}->{Connection};
@@ -165,13 +162,13 @@ sub Run {
 
     my @Return;
 
-# Rother OSS / DiscreteAddresses
     # ConfigObject section / get params
-    my $GetParam = $Self->{EmailParams};
+    my $GetParam = $Self->GetEmailParams();
 
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
+# Rother OSS / DiscreteAddresses
     # get objects
     my $ConfigObject      = $Kernel::OM->Get('Kernel::Config');
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
