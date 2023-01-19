@@ -25,10 +25,10 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
-# Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteAddresses
 #use Kernel::System::VariableCheck qw(IsHashRefWithData);
 use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
-# EO DiscreteSystemAddresses
+# EO DiscreteAddresses
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -131,14 +131,14 @@ sub new {
         }
     }
 
-# Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteAddresses
     # get email params
     $Self->{EmailParams} = $Self->GetEmailParams();
 
     # get first communication log communication / connection id
     $Self->{FirstCommunicationID} = $Self->{CommunicationLogObject}->{CommunicationID};
     $Self->{FirstConnectionID}    = $Self->{CommunicationLogObject}->{Current}->{Connection};
-# EO DiscreteSystemAddresses
+# EO DiscreteAddresses
 
     return $Self;
 }
@@ -168,11 +168,9 @@ sub Run {
 
     my @Return;
 
+# Rother OSS / DiscreteAddresses
     # ConfigObject section / get params
-# Rother OSS / DiscreteSystemAddresses
-#    my $GetParam = $Self->GetEmailParams();
     my $GetParam = $Self->{EmailParams};
-# EO DiscreteSystemAddresses
 
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
@@ -180,226 +178,121 @@ sub Run {
     # get config objects
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
-# Rother OSS / DiscreteSystemAddresses
-    # check system addresses in pool
-    if ( !$Self->{AddressCount} ) {
+    my @TicketIDsToLink;
+    if ( !$Param{AddressPool} ) {
+# EO DiscreteAddresses
 
-        # filter system addresses
-        my @FilteredAddresses = $Self->_FilterSystemAddresses(
+        # run all PreFilterModules (modify email params)
+        if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
+
+            my %Jobs = %{ $ConfigObject->Get('PostMaster::PreFilterModule') };
+
+            # get main objects
+            my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
+
+            JOB:
+            for my $Job ( sort keys %Jobs ) {
+
+                return if !$MainObject->Require( $Jobs{$Job}->{Module} );
+
+                my $FilterObject = $Jobs{$Job}->{Module}->new(
+                    %{$Self},
+                );
+
+                if ( !$FilterObject ) {
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Error',
+                        Key           => 'Kernel::System::PostMaster',
+                        Value         => "new() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
+                    );
+                    next JOB;
+                }
+
+                # modify params
+                my $Run = $FilterObject->Run(
+                    GetParam  => $GetParam,
+                    JobConfig => $Jobs{$Job},
+                    TicketID  => $TicketID,
+                    UserID    => $Self->{PostmasterUserID},
+                );
+                if ( !$Run ) {
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Error',
+                        Key           => 'Kernel::System::PostMaster',
+                        Value         => "Execute Run() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
+                    );
+                }
+            }
+        }
+
+        # should I ignore the incoming mail?
+        if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Info',
+                Key           => 'Kernel::System::PostMaster',
+                Value         =>
+                    "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
+                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
+            );
+            return (5);
+        }
+
+        #
+        # ticket section
+        #
+
+        # check if follow up (again, with new GetParam)
+        ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
+
+        # Rother OSS / DiscreteAddresses
+        # lookup address per pool name
+        my %AddressPoolNameList = $Self->_AddressPoolNameList();
+
+        # get address of every pool
+        my @FilteredAddresses = $Self->_FilterAddresses(
             ToString => $GetParam->{To},
         );
-        if ( @FilteredAddresses ) {
 
-            # set address count
-            $Self->{AddressCount} = scalar @FilteredAddresses;
+        if ( $TicketID ) {
 
-            # get objects
-            my $LinkObject          = $Kernel::OM->Get('Kernel::System::LinkObject');
-            my $TicketObject        = $Kernel::OM->Get('Kernel::System::Ticket');
-            my $SystemAddressObject = $Kernel::OM->Get('Kernel::System::SystemAddress');
-
-            # get mail queue id
-            my $MailQueueID;
-            my @GetTicketIDs;
-            my $CleanUpSubject;
-            if ( $Tn && $TicketID ) {
-
-                # get mail queue id
-                $MailQueueID = $TicketObject->TicketQueueID(
-                    TicketID => $TicketID,
-                );
-
-                # subject clean up
-                $CleanUpSubject = $TicketObject->TicketSubjectClean(
-                    TicketNumber => $Tn,
-                    Subject      => $GetParam->{Subject},
-                );
-
-                # create follow-up
-                my $GetTicketID = $Self->_RecursivePostMasterRun(
-                    GetParam => $GetParam,
-                );
-                push (@GetTicketIDs, $GetTicketID);
-
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'info',
-                    Message  => "SystemAddressPoolCheck - created original mail as follow-up (ID: $GetTicketID)!",
-                );
-            }
-
-            my $ToString = $GetParam->{To};
-            for my $FilteredAddress ( @FilteredAddresses ) {
-
-                # system address follow-up check
-                my $AddressQueueID = $SystemAddressObject->SystemAddressQueueID(
-                    Address => $FilteredAddress,
-                );
-                if (
-                    ( $MailQueueID && $AddressQueueID )
-                    &&
-                    ( $MailQueueID != $AddressQueueID )
-                ) {
-
-                    # check linked tickets
-                    my %LinkedTickets = $LinkObject->LinkKeyListWithData(
-                        Object1   => 'Ticket',
-                        Key1      => $TicketID,
-                        Object2   => 'Ticket',
-                        State     => 'Valid',
-                        Type      => 'Interdivisional',
-                        UserID    => $Self->{PostmasterUserID},
-                    );
-
-                    my $LTCount = keys %LinkedTickets;
-                    for my $LinkedTicket ( keys %LinkedTickets ) {
-
-                        my $LTQueueID = $LinkedTickets{$LinkedTicket}{QueueID};
-                        if ( !$LTQueueID || $AddressQueueID != $LTQueueID ) {
-                            $LTCount--;
-                            next;
-                        }
-
-                        # follow-up for linked ticket
-                        my $LTTicketNumber  = $LinkedTickets{$LinkedTicket}{TicketNumber};
-                        my $FollowUpSubject = $TicketObject->TicketSubjectBuild(
-                            TicketNumber => $LTTicketNumber,
-                            Subject      => $CleanUpSubject,
-                            Action       => 'Reply',
-                        );
-
-                        $GetParam->{Subject} = $FollowUpSubject;
-                        my $GetTicketID = $Self->_RecursivePostMasterRun(
-                            GetParam          => $GetParam,
-                            ToString          => $ToString,
-                            SystemPoolAddress => $FilteredAddress,
-                        );
-
-                        $Kernel::OM->Get('Kernel::System::Log')->Log(
-                            Priority => 'info',
-                            Message  => "SystemAddressPoolCheck - Created follow-up in ticket (ID: $GetTicketID)!",
-                        );
-                    }
-
-                    if ( !$LTCount ) {
-
-                        $GetParam->{Subject} = $CleanUpSubject;
-                        my $GetTicketID = $Self->_RecursivePostMasterRun(
-                            GetParam          => $GetParam,
-                            ToString          => $ToString,
-                            SystemPoolAddress => $FilteredAddress,
-                        );
-                        push (@GetTicketIDs, $GetTicketID);
-
-                        $Kernel::OM->Get('Kernel::System::Log')->Log(
-                            Priority => 'info',
-                            Message  => "SystemAddressPoolCheck - Cannot find exist linked tickets, created new ticket (ID: $GetTicketID) and will be linked to original ticket (ID: $TicketID)!",
-                        );
-                    }
-                }
-                else {
-
-                    my $GetTicketID = $Self->_RecursivePostMasterRun(
-                        GetParam          => $GetParam,
-                        ToString          => $ToString,
-                        SystemPoolAddress => $FilteredAddress,
-                    );
-                    push (@GetTicketIDs, $GetTicketID);
-
-                    $Kernel::OM->Get('Kernel::System::Log')->Log(
-                        Priority => 'info',
-                        Message  => "SystemAddressPoolCheck - Created new ticket (ID: $GetTicketID)!",
-                    );
-                }
-
-                $Self->{AddressCount}--;
-            }
-
-            if ( scalar(@GetTicketIDs) > 1 ) {
-
-                $Self->_InterdivisionalTicketLinkAdd(
-                    TicketIDs => \@GetTicketIDs,
-                );
-
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'info',
-                    Message  => "SystemAddressPoolCheck - Tickets should be linked to 'Interdivisional' type!",
-                );
-            }
-
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'info',
-                Message  => "SystemAddressPoolCheck - Finished!",
+            $Param{AddressPool} = $Self->_AddressPoolNameLookup(
+                TicketID => $TicketID,
             );
+        }
+        elsif ( @FilteredAddresses ) {
 
-            return 1;
+            $Param{AddressPool} = $AddressPoolNameList{ $FilteredAddresses[0] };
+        }
+
+        ADDRESS:
+        for my $Address ( @FilteredAddresses ) {
+
+            if (
+                $Param{AddressPool}
+                &&
+                ( $Param{AddressPool} eq $AddressPoolNameList{ $Address } )
+            ) {
+                next ADDRESS;
+            }
+
+            my $GetTicketID = $Self->_RecursivePostMasterRun(
+                AddressPool      => $AddressPoolNameList{ $Address },
+                FollowUpTicketID => $TicketID,
+            );
+            push(@TicketIDsToLink, $GetTicketID);
         }
     }
-# EO DiscreteSystemAddresses
+    elsif ( $Param{FollowUpTicketID} ) {
 
-    # run all PreFilterModules (modify email params)
-    if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
-
-        my %Jobs = %{ $ConfigObject->Get('PostMaster::PreFilterModule') };
-
-        # get main objects
-        my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
-
-        JOB:
-        for my $Job ( sort keys %Jobs ) {
-
-            return if !$MainObject->Require( $Jobs{$Job}->{Module} );
-
-            my $FilterObject = $Jobs{$Job}->{Module}->new(
-                %{$Self},
-            );
-
-            if ( !$FilterObject ) {
-                $Self->{CommunicationLogObject}->ObjectLog(
-                    ObjectLogType => 'Message',
-                    Priority      => 'Error',
-                    Key           => 'Kernel::System::PostMaster',
-                    Value         => "new() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
-                );
-                next JOB;
-            }
-
-            # modify params
-            my $Run = $FilterObject->Run(
-                GetParam  => $GetParam,
-                JobConfig => $Jobs{$Job},
-                TicketID  => $TicketID,
-                UserID    => $Self->{PostmasterUserID},
-            );
-            if ( !$Run ) {
-                $Self->{CommunicationLogObject}->ObjectLog(
-                    ObjectLogType => 'Message',
-                    Priority      => 'Error',
-                    Key           => 'Kernel::System::PostMaster',
-                    Value         => "Execute Run() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
-                );
-            }
-        }
-    }
-
-    # should I ignore the incoming mail?
-    if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Info',
-            Key           => 'Kernel::System::PostMaster',
-            Value         =>
-                "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
-                . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
+        ( $Tn, $TicketID ) = $Self->_FindLinkedTicket(
+            TicketID    => $Param{FollowUpTicketID},
+            AddressPool => $Param{AddressPool},
         );
-        return (5);
     }
-
-    #
-    # ticket section
-    #
-
-    # check if follow up (again, with new GetParam)
-    ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
+    # EO DiscreteAddresses
 
     # run all PreCreateFilterModules
     if ( ref $ConfigObject->Get('PostMaster::PreCreateFilterModule') eq 'HASH' ) {
@@ -664,6 +557,12 @@ sub Run {
         }
     }
 
+# Rother OSS / DiscreteAddresses
+    # if (@TicketIDsToLink ) {
+    #     LinkStuff
+    # }
+# EO DiscreteAddresses
+
     return @Return;
 }
 
@@ -847,18 +746,90 @@ sub GetEmailParams {
     return \%GetParam;
 }
 
-# Rother OSS / DiscreteSystemAddresses
-=head2 _FilterSystemAddresses()
+# Rother OSS / DiscreteAddresses
+=head2 _AddressPoolNameList()
 
-Filter system addresses from every pool based on To field
+Get Addresses of every pools
 
-    my @FilteredAddresses = $PostMasterObject->_FilterSystemAddresses(
+    my %AddressPoolNameList = $PostMasterObject->_AddressPoolNameList();
+
+=cut
+
+sub _AddressPoolNameList {
+    my ( $Self, %Param ) = @_;
+
+    # get config object
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
+    my $AddressPools = $ConfigObject->Get('Address::Pools');
+    if ( !IsHashRefWithData($AddressPools) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Address::Pools is not a hash ref!",
+        );
+        return;
+    }
+
+    my %AddressPoolNameList;
+    for my $PoolName ( keys %{ $AddressPools } ) {
+        for my $Address ( $AddressPools->{$PoolName}->@* ) {
+            $AddressPoolNameList{ $Address } = $PoolName;
+        }
+    }
+
+    return %AddressPoolNameList;
+}
+
+=head2 _AddressPoolNameLookup()
+
+Get address pool name of ticket
+
+    $PostMasterObject->_AddressPoolNameLookup(
+        TicketID => 4,
+    );
+
+=cut
+
+sub _AddressPoolNameLookup {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{TicketID} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need TicketID!",
+        );
+        return;
+    }
+
+    # get address pool name list
+    my %AddressPoolNameList = $Self->_AddressPoolNameList();
+
+    # get ticket queue id
+    my $QueueID = $Kernel::OM->Get('Kernel::System::Ticket')->TicketQueueID(
+        TicketID => $Param{TicketID},
+    );
+
+    # set ticket pool name
+    my %QueueData = $Kernel::OM->Get('Kernel::System::Queue')->QueueGet(
+        ID => $QueueID,
+    );
+    my $PoolName = $AddressPoolNameList{ $QueueData{Email} };
+
+    return $PoolName;
+}
+
+=head2 _FilterAddresses()
+
+Filter addresses from every pool based on To field
+
+    my @FilteredAddresses = $PostMasterObject->_FilterAddresses(
         ToString => 'test@example.com, test2@example.com ...',
     );
 
 =cut
 
-sub _FilterSystemAddresses {
+sub _FilterAddresses {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
@@ -870,36 +841,30 @@ sub _FilterSystemAddresses {
         return;
     }
 
-    # get config object
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
-
-    my $SystemAddressPools = $ConfigObject->Get('SystemAddress::Pools');
-    if ( !IsHashRefWithData($SystemAddressPools) ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "SystemAddress::Pools is not a hash ref!",
-        );
-        return;
-    }
-
+    my %PoolNameUsed;
     my @FilteredAddresses;
+    my %AddressPoolNameList = $Self->_AddressPoolNameList();
     my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $Param{ToString} );
-    my @SAPoolNames;
-    EMAIL:
-    for my $Email ( @EmailAddresses ) {
+    if ( %AddressPoolNameList ) {
 
-        next EMAIL if !$Email;
+        EMAIL:
+        for my $Email ( @EmailAddresses ) {
 
-        my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+            next EMAIL if !$Email;
 
-        next EMAIL if !$Address;
+            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
 
-        # use the first found address of every pool
-        for my $SAPool ( keys %{ $SystemAddressPools } ) {
-            if ( grep( /^$Address$/, @{ $SystemAddressPools->{$SAPool} } ) ) {
-                if ( !grep( /^$SAPool$/, @SAPoolNames ) ) {
-                    push(@FilteredAddresses, $Address);
-                    push(@SAPoolNames, $SAPool);
+            next EMAIL if !$Address;
+
+            # use the first found address of every pool
+            for my $PoolAddress ( keys %AddressPoolNameList ) {
+
+                my $PoolName = $AddressPoolNameList{$PoolAddress};
+                if ( $Address eq $PoolAddress ) {
+                    if ( !$PoolNameUsed{ $PoolName } ) {
+                        push(@FilteredAddresses, $Address);
+                        $PoolNameUsed{ $PoolName } = 1;
+                    }
                 }
             }
         }
@@ -910,12 +875,11 @@ sub _FilterSystemAddresses {
 
 =head2 _RecursivePostMasterRun()
 
-Recursive postmaster run for system address pool
+Recursive postmaster run for address pool
 
     my $TicketID = $PostMasterObject->_RecursivePostMasterRun(
-        GetParam          => $GetParam,
-        ToString          => 'test@example.com, test2@example.com ...',
-        SystemPoolAddress => 'test@example.com',
+        AddressPool      => 'Pool1',
+        FollowUpTicketID => 4,
     );
 
 =cut
@@ -923,27 +887,10 @@ Recursive postmaster run for system address pool
 sub _RecursivePostMasterRun {
     my ( $Self, %Param ) = @_;
 
-    # check needed stuff
-    if ( !$Param{GetParam} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need GetParam!",
-        );
-        return;
-    }
-
-    if ( !IsHashRefWithData($Param{GetParam}) ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need GetParam as hash ref!",
-        );
-        return;
-    }
+    my $TicketID;
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
-
-    my $TicketID;
 
     # create new communication log for every article
     my $CommunicationLogObject = $Kernel::OM->Create(
@@ -963,7 +910,7 @@ sub _RecursivePostMasterRun {
     $CommunicationLogObject->ObjectLog(
         ObjectLogType => 'Message',
         Priority      => 'Debug',
-        Key           => 'Kernel::System::PostMaster::SystemAddressPool::OriginalMail',
+        Key           => 'Kernel::System::PostMaster::AddressPool::OriginalMail',
         Value         => "For more details see: $DetailsLink",
     );
     $Self->{CommunicationLogObject} = $CommunicationLogObject;
@@ -974,19 +921,15 @@ sub _RecursivePostMasterRun {
     $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
     $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
 
-    # set filtered address at first in To string
-    if ( $Param{ToString} && $Param{SystemPoolAddress} ) {
-        $Param{GetParam}->{To} = $Param{ToString};
-        $Param{GetParam}->{To} =~ s/$Param{SystemPoolAddress},\s//g;
-        $Param{GetParam}->{To} = $Param{SystemPoolAddress} . ", " . $Param{GetParam}->{To};
-    }
-
     # set status message
     my $MessageStatus = 'Successful';
 
     # run post master
     my @Success = eval {
-        $Self->Run();
+        $Self->Run(
+            AddressPool      => $Param{AddressPool},
+            FollowUpTicketID => $Param{FollowUpTicketID},
+        );
     };
     if ( !$Success[0] ) {
         $MessageStatus = 'Failed';
@@ -1007,7 +950,7 @@ sub _RecursivePostMasterRun {
 
 =head2 _InterdivisionalTicketLinkAdd()
 
-Add link for system address pool tickets with new 'Interdivisional' type
+Add link for address pool tickets with new 'Interdivisional' type
 
     $PostMasterObject->_InterdivisionalTicketLinkAdd(
         TicketIDs => [1, 5, 8],
@@ -1073,6 +1016,66 @@ sub _InterdivisionalTicketLinkAdd {
 
     return 1;
 }
-# EO DiscreteSystemAddresses
+
+=head2 _FindLinkedTicket()
+
+Find linked ticket with 'Interdivisional' type in address pool
+
+    $PostMasterObject->_FindLinkedTicket(
+        TicketID    => 4,
+        AddressPool => 'Pool1',
+    );
+
+=cut
+
+sub _FindLinkedTicket {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    for my $Needed (qw(TicketID AddressPool)) {
+        if ( !$Param{$Needed} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Needed!",
+            );
+            return;
+        }
+    }
+
+    # get linked tickets
+    my %LinkedTickets = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkKeyListWithData(
+        Object1   => 'Ticket',
+        Key1      => $Param{TicketID},
+        Object2   => 'Ticket',
+        State     => 'Valid',
+        Type      => 'Interdivisional',
+        UserID    => $Self->{PostmasterUserID},
+    );
+
+    # get address pools
+    my %AddressPoolNameList = $Self->_AddressPoolNameList();
+
+    for my $LinkedTicket ( keys %LinkedTickets ) {
+
+        # get ticket number / ticket id
+        my $LTTicketID     = $LinkedTickets{$LinkedTicket}{TicketID};
+        my $LTTicketNumber = $LinkedTickets{$LinkedTicket}{TicketNumber};
+
+        my $LTPoolName = $Self->_AddressPoolNameLookup(
+            TicketID => $LTTicketID,
+        );
+        if (
+            $LTPoolName
+            &&
+            ( $LTPoolName eq $Param{AddressPool} )
+        ) {
+
+            return ( $LTTicketNumber, $LTTicketID );
+        }
+    }
+
+    return;
+}
+# EO DiscreteAddresses
 
 1;
