@@ -25,7 +25,10 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
+# Rother OSS / DiscreteSystemAddresses
+#use Kernel::System::VariableCheck qw(IsHashRefWithData);
 use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
+# EO DiscreteSystemAddresses
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -128,12 +131,14 @@ sub new {
         }
     }
 
+# Rother OSS / DiscreteSystemAddresses
     # get email params
     $Self->{EmailParams} = $Self->GetEmailParams();
 
     # get first communication log communication / connection id
     $Self->{FirstCommunicationID} = $Self->{CommunicationLogObject}->{CommunicationID};
     $Self->{FirstConnectionID}    = $Self->{CommunicationLogObject}->{Current}->{Connection};
+# EO DiscreteSystemAddresses
 
     return $Self;
 }
@@ -163,15 +168,19 @@ sub Run {
 
     my @Return;
 
-    # get email params
+    # ConfigObject section / get params
+# Rother OSS / DiscreteSystemAddresses
+#    my $GetParam = $Self->GetEmailParams();
     my $GetParam = $Self->{EmailParams};
-
-    # get config object
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+# EO DiscreteSystemAddresses
 
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
+    # get config objects
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
+# Rother OSS / DiscreteSystemAddresses
     # check system addresses in pool
     if ( !$Self->{AddressCount} ) {
 
@@ -325,6 +334,7 @@ sub Run {
             return 1;
         }
     }
+# EO DiscreteSystemAddresses
 
     # run all PreFilterModules (modify email params)
     if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
@@ -837,6 +847,7 @@ sub GetEmailParams {
     return \%GetParam;
 }
 
+# Rother OSS / DiscreteSystemAddresses
 =head2 _FilterSystemAddresses()
 
 Filter system addresses from every pool based on To field
@@ -1062,5 +1073,6 @@ sub _InterdivisionalTicketLinkAdd {
 
     return 1;
 }
+# EO DiscreteSystemAddresses
 
 1;
