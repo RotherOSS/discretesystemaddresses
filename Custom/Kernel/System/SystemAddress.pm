@@ -381,6 +381,7 @@ sub SystemAddressIsLocalAddress {
         }
     }
 
+# Rother OSS / DiscreteAddresses
     # get object
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
@@ -396,6 +397,7 @@ sub SystemAddressIsLocalAddress {
             }
         }
     }
+# EO DiscreteAddresses
 
     return $Self->SystemAddressQueueID(%Param);
 }
