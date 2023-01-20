@@ -75,16 +75,16 @@ sub new {
     # check needed objects
     $Self->{Email}                  = $Param{Email}                  || die "Got no Email!";
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+# Rother OSS / DiscreteAddresses
+    $Self->{OriginCommunicationLogObject} = $Self->{CommunicationLogObject};
+# EO DiscreteAddresses
 
     $Self->{ParserObject} = Kernel::System::EmailParser->new(
         Email => $Param{Email},
     );
 
     # create needed objects
-    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
-    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
-    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
-    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
+    $Self->_CreateMailObjects( Data => $Self );
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
@@ -127,12 +127,6 @@ sub new {
             }
         }
     }
-
-# Rother OSS / DiscreteAddresses
-    # get first communication log communication / connection id
-    $Self->{FirstCommunicationID} = $Self->{CommunicationLogObject}->{CommunicationID};
-    $Self->{FirstConnectionID}    = $Self->{CommunicationLogObject}->{Current}->{Connection};
-# EO DiscreteAddresses
 
     return $Self;
 }
@@ -279,14 +273,21 @@ sub Run {
             );
             push(@TicketIDsToLink, $GetTicketID);
         }
-    }
-    elsif ( $Param{FollowUpTicketID} ) {
 
-        ( $Tn, $TicketID ) = $AddressPoolObject->FindLinkedTicket(
-            TicketID    => $Param{FollowUpTicketID},
-            AddressPool => $Param{AddressPool},
-            UserID      => $Self->{PostmasterUserID},
-        );
+        # set communication log to origin
+        $Self->{CommunicationLogObject} = $Self->{OriginCommunicationLogObject};
+        $Self->_CreateMailObjects( Data => $Self );
+    }
+    else {
+
+        ( $Tn, $TicketID ) = ();
+        if ( $Param{FollowUpTicketID} ) {
+            ( $Tn, $TicketID ) = $AddressPoolObject->FindLinkedTicket(
+                TicketID    => $Param{FollowUpTicketID},
+                AddressPool => $Param{AddressPool},
+                UserID      => $Self->{PostmasterUserID},
+            );
+        }
     }
 # EO DiscreteAddresses
 
@@ -554,9 +555,15 @@ sub Run {
     }
 
 # Rother OSS / DiscreteAddresses
-    # if (@TicketIDsToLink ) {
-    #     LinkStuff
-    # }
+    # create link of type 'Interdivisional' to tickets
+    push(@TicketIDsToLink, $Return[1]);
+    if ( scalar(@TicketIDsToLink) > 1 ) {
+
+        $AddressPoolObject->InterdivisionalTicketLinkAdd(
+            TicketIDs => \@TicketIDsToLink,
+            UserID    => $Self->{PostmasterUserID},
+        );
+    }
 # EO DiscreteAddresses
 
     return @Return;
@@ -831,8 +838,10 @@ sub _RecursivePostMasterRun {
     $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
     # create connection details link
+    my $OriginConnectionID    = $Self->{OriginCommunicationLogObject}->{Current}->{Connection};
+    my $OriginCommunicationID = $Self->{OriginCommunicationLogObject}->{CommunicationID};
     my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
-        "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$Self->{FirstCommunicationID};ObjectLogID=$Self->{FirstConnectionID}";
+        "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$OriginCommunicationID;ObjectLogID=$OriginConnectionID";
 
     $CommunicationLogObject->ObjectLog(
         ObjectLogType => 'Message',
@@ -842,11 +851,8 @@ sub _RecursivePostMasterRun {
     );
     $Self->{CommunicationLogObject} = $CommunicationLogObject;
 
-    # create needed objects
-    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
-    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
-    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
-    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
+    # create needed objects again
+    $Self->_CreateMailObjects( Data => $Self );
 
     # set status message
     my $MessageStatus = 'Successful';
@@ -873,6 +879,36 @@ sub _RecursivePostMasterRun {
     $CommunicationLogObject->CommunicationStop( Status => 'Successful' );
 
     return $TicketID;
+}
+
+
+=head2 _CreateMailObjects()
+
+Create new mail objects (DestQueue, NewTicket, FollowUp, Reject)
+
+    $PostMasterObject->_CreateMailObjects( Data => $Self );
+
+=cut
+
+sub _CreateMailObjects {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{Data} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need Data!",
+        );
+        return;
+    }
+
+    # create mail objects
+    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{ $Param{Data} } );
+    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{ $Param{Data} } );
+    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{ $Param{Data} } );
+    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{ $Param{Data} } );
+
+    return 1;
 }
 # EO DiscreteAddresses
 
