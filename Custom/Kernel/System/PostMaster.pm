@@ -25,7 +25,9 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
-use Kernel::System::VariableCheck qw(IsHashRefWithData);
+# Rother OSS / DiscreteAddresses
+use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
+# EO DiscreteAddresses
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -84,7 +86,9 @@ sub new {
     );
 
     # create needed objects
-    $Self->_CreateMailObjects( Data => $Self );
+    $Self->_CreateMailObjects(
+        Data => $Self,
+    );
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
@@ -240,9 +244,10 @@ sub Run {
         # lookup address per pool name
         my %AddressPoolNameList = $AddressPoolObject->NameList();
 
-        # get address of every pool
-        my @FilteredAddresses = $Self->_FilterAddresses(
-            ToString => $GetParam->{To},
+        # build mail address list
+        my @MailAddressList = $Self->_BuildMailAddressList(
+            Params            => $GetParam,
+            AddressPoolFilter => 1,
         );
 
         if ( $TicketID ) {
@@ -251,13 +256,13 @@ sub Run {
                 TicketID => $TicketID,
             );
         }
-        elsif ( @FilteredAddresses ) {
+        elsif ( @MailAddressList ) {
 
-            $Param{AddressPool} = $AddressPoolNameList{ $FilteredAddresses[0] };
+            $Param{AddressPool} = $AddressPoolNameList{ $MailAddressList[0] };
         }
 
         ADDRESS:
-        for my $Address ( @FilteredAddresses ) {
+        for my $Address ( @MailAddressList ) {
 
             if (
                 $Param{AddressPool}
@@ -276,7 +281,9 @@ sub Run {
 
         # set communication log to origin
         $Self->{CommunicationLogObject} = $Self->{OriginCommunicationLogObject};
-        $Self->_CreateMailObjects( Data => $Self );
+        $Self->_CreateMailObjects(
+            Data => $Self,
+        );
     }
     else {
 
@@ -750,63 +757,6 @@ sub GetEmailParams {
 }
 
 # Rother OSS / DiscreteAddresses
-=head2 _FilterAddresses()
-
-Filter addresses from every pool based on To field
-
-    my @FilteredAddresses = $PostMasterObject->_FilterAddresses(
-        ToString => 'test@example.com, test2@example.com ...',
-    );
-
-=cut
-
-sub _FilterAddresses {
-    my ( $Self, %Param ) = @_;
-
-    # check needed stuff
-    if ( !$Param{ToString} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need ToString!",
-        );
-        return;
-    }
-
-    # get object
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
-
-    my %PoolNameUsed;
-    my @FilteredAddresses;
-    my @EmailAddresses      = $Self->{ParserObject}->SplitAddressLine( Line => $Param{ToString} );
-    my %AddressPoolNameList = $AddressPoolObject->NameList();
-    if ( %AddressPoolNameList ) {
-
-        EMAIL:
-        for my $Email ( @EmailAddresses ) {
-
-            next EMAIL if !$Email;
-
-            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
-
-            next EMAIL if !$Address;
-
-            # use the first found address of every pool
-            for my $PoolAddress ( keys %AddressPoolNameList ) {
-
-                my $PoolName = $AddressPoolNameList{$PoolAddress};
-                if ( $Address eq $PoolAddress ) {
-                    if ( !$PoolNameUsed{ $PoolName } ) {
-                        push(@FilteredAddresses, $Address);
-                        $PoolNameUsed{ $PoolName } = 1;
-                    }
-                }
-            }
-        }
-    }
-
-    return @FilteredAddresses;
-}
-
 =head2 _RecursivePostMasterRun()
 
 Recursive postmaster run for address pool
@@ -852,7 +802,9 @@ sub _RecursivePostMasterRun {
     $Self->{CommunicationLogObject} = $CommunicationLogObject;
 
     # create needed objects again
-    $Self->_CreateMailObjects( Data => $Self );
+    $Self->_CreateMailObjects(
+        Data => $Self,
+    );
 
     # set status message
     my $MessageStatus = 'Successful';
@@ -881,12 +833,104 @@ sub _RecursivePostMasterRun {
     return $TicketID;
 }
 
+=head2 _BuildMailAddressList()
+
+Build mail address list of To, Cc, Bcc ...
+
+    my @MailAddressList = $PostMasterObject->_BuildMailAddressList(
+        Params            => $GetParam,
+        AddressPoolFilter => 1,
+    );
+
+=cut
+
+sub _BuildMailAddressList {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{Params} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need Params!",
+        );
+        return;
+    }
+
+    if ( !IsHashRefWithData($Param{Params}) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need Params as hash ref!",
+        );
+        return;
+    }
+
+    # get headers
+    my %GetParam = %{ $Param{Params} };
+
+    # check possible address headers
+    my %AddressUsed;
+    my @AddressList;
+    HEADER:
+    for my $Header (qw(Resent-To Envelope-To To Cc Bcc Delivered-To X-Original-To)) {
+
+        next HEADER if !$GetParam{$Header};
+
+        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
+        EMAIL:
+        for my $Email ( @Emails ) {
+
+            next EMAIL if !$Email;
+
+            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+
+            next EMAIL if !$Address;
+
+            if ( !$AddressUsed{ $Address } ) {
+                push(@AddressList, $Address);
+                $AddressUsed{ $Address } = 1;
+            }
+
+        }
+    }
+
+    if ( $Param{AddressPoolFilter} ) {
+
+        # get object
+        my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+
+        my %PoolNameUsed;
+        my @FilteredAddressList;
+        my %AddressPoolNameList = $AddressPoolObject->NameList();
+        if ( %AddressPoolNameList ) {
+
+            for my $Address ( @AddressList ) {
+
+                # use the first found address of every pool
+                for my $PoolAddress ( keys %AddressPoolNameList ) {
+
+                    my $PoolName = $AddressPoolNameList{$PoolAddress};
+                    if ( $Address eq $PoolAddress ) {
+                        if ( !$PoolNameUsed{ $PoolName } ) {
+                            push(@FilteredAddressList, $Address);
+                            $PoolNameUsed{ $PoolName } = 1;
+                        }
+                    }
+                }
+            }
+        }
+        @AddressList = @FilteredAddressList;
+    }
+
+    return @AddressList;
+}
 
 =head2 _CreateMailObjects()
 
 Create new mail objects (DestQueue, NewTicket, FollowUp, Reject)
 
-    $PostMasterObject->_CreateMailObjects( Data => $Self );
+    $PostMasterObject->_CreateMailObjects(
+        Data => $Self,
+    );
 
 =cut
 
