@@ -63,6 +63,15 @@ Get Addresses of every pools
 
     my %NameList = $AddressPoolObject->NameList();
 
+Return:
+
+    %NameList = (
+              'test1@example.com' => 'Pool1',
+              'test2@example.com' => 'Pool2',
+              'test3@example.com' => 'Pool3',
+              ...
+            )
+
 =cut
 
 sub NameList {
@@ -97,6 +106,10 @@ Get address pool name of ticket
     my $PoolName = $AddressPoolObject->NameLookup(
         TicketID => 4,
     );
+
+Return:
+
+    $PoolName = "Pool1"
 
 =cut
 
@@ -133,6 +146,63 @@ sub NameLookup {
     return $PoolName;
 }
 
+=head2 QueueCheck()
+
+Check if queue exists in address pool
+
+    my $QueueExist = $AddressPoolObject->QueueCheck(
+        Queue       => 'Junk',
+        AddressPool => 'Pool1',
+    );
+
+Return:
+
+    $QueueExist = 1
+
+    Or
+
+    $QueueExist = 0
+
+=cut
+
+sub QueueCheck {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    for my $Needed (qw(Queue AddressPool)) {
+        if ( !$Param{$Needed} ) {
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "Need $Needed!",
+            );
+            return;
+        }
+    }
+
+    # get object
+    my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
+
+    # get address pool name list
+    my %NameList = $Self->NameList();
+
+    # get queue address pool
+    my %QueueData = $QueueObject->QueueGet(
+        Name => $Param{Queue},
+    );
+
+    my $QueuePool;
+    if ( $QueueData{Email} ) {
+        $QueuePool = $NameList{ $QueueData{Email} };
+    }
+
+    # check is queue in given address pool
+    if ( !$QueuePool || $QueuePool ne $Param{AddressPool} ) {
+        return;
+    }
+
+    return 1;
+}
+
 =head2 FindLinkedTicket()
 
 Find linked ticket with 'Interdivisional' type in address pool
@@ -142,6 +212,10 @@ Find linked ticket with 'Interdivisional' type in address pool
         AddressPool => 'Pool1',
         UserID      => 1,
     );
+
+Return:
+
+    ( $LTTicketNumber, $LTTicketID ) = ("2023012338000074", 5)
 
 =cut
 
