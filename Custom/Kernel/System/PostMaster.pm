@@ -25,9 +25,7 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
-# Rother OSS / DiscreteAddresses
-use Kernel::System::VariableCheck qw(IsHashRefWithData IsArrayRefWithData);
-# EO DiscreteAddresses
+use Kernel::System::VariableCheck qw(IsHashRefWithData);
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -85,10 +83,12 @@ sub new {
         Email => $Param{Email},
     );
 
+# Rother OSS / DiscreteAddresses
     # create needed objects
     $Self->_CreateMailObjects(
         Data => $Self,
     );
+# EO DiscreteAddresses
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
@@ -927,7 +927,7 @@ sub _BuildMailAddressList {
     my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
 
     # get headers
-    my %GetParam = %{ $Param{Params} };
+    my %GetParam = $Param{Params}->%*;
 
     # check possible address headers
     my %AddressUsed;
@@ -1088,10 +1088,10 @@ sub _CreateMailObjects {
     }
 
     # create mail objects
-    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{ $Param{Data} } );
-    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{ $Param{Data} } );
-    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{ $Param{Data} } );
-    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{ $Param{Data} } );
+    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( $Param{Data}->%* );
+    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( $Param{Data}->%* );
+    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( $Param{Data}->%* );
+    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( $Param{Data}->%* );
 
     return 1;
 }

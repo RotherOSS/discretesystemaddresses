@@ -90,7 +90,7 @@ sub NameList {
     }
 
     my %NameList;
-    for my $PoolName ( keys %{ $AddressPools } ) {
+    for my $PoolName ( keys $AddressPools->%* ) {
         for my $Address ( $AddressPools->{$PoolName}->@* ) {
             $NameList{ $Address } = $PoolName;
         }
@@ -304,7 +304,7 @@ sub InterdivisionalTicketLinkAdd {
         return;
     }
 
-    my @TicketIDs = @{ $Param{TicketIDs} };
+    my @TicketIDs = $Param{TicketIDs}->@*;
     if ( scalar(@TicketIDs) < 2 ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
