@@ -965,7 +965,9 @@ sub BuildMailAddressList {
 
         my %PoolNameUsed;
         my %FilteredAddressList;
-        my %AddressPoolNameList = $AddressPoolObject->NameList();
+        my %AddressPoolNameList = $AddressPoolObject->NameList(
+            QueueDefault => 1,
+        );
         if ( %AddressPoolNameList ) {
 
             my %Queues = $QueueObject->QueueList(
@@ -977,7 +979,7 @@ sub BuildMailAddressList {
                 # use the first found address of every pool
                 for my $PoolAddress ( keys %AddressPoolNameList ) {
 
-                    my $PoolName = $AddressPoolNameList{$PoolAddress};
+                    my $PoolName = $AddressPoolNameList{$PoolAddress}{Name};
                     if ( $Address eq $PoolAddress ) {
 
                         if ( !$PoolNameUsed{ $PoolName } ) {
@@ -997,17 +999,16 @@ sub BuildMailAddressList {
 
                             if ( !$QueueExist ) {
 
-                                # TODO: Get Queue default from Config
-                                my $DefaultQueue = '';
-
-                                if ( !$DefaultQueue ) {
+                                # Get queue default from config
+                                my $QueueDefault = $AddressPoolNameList{$PoolAddress}{Queue};
+                                if ( !$QueueDefault ) {
                                     next;
                                 }
-
-                                $QueueExist = $DefaultQueue;
+                                $QueueExist = $QueueDefault;
                             }
+
+                            $PoolNameUsed{ $PoolName }     = 1;
                             $FilteredAddressList{$Address} = $QueueExist;
-                            $PoolNameUsed{ $PoolName } = 1;
                         }
                     }
                 }

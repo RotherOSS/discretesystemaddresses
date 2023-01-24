@@ -63,12 +63,32 @@ Get Addresses of every pools
 
     my %NameList = $AddressPoolObject->NameList();
 
+    my %NameList = $AddressPoolObject->NameList(
+        QueueDefault => 1,
+    );
+
 Return:
 
     %NameList = (
               'test1@example.com' => 'Pool1',
               'test2@example.com' => 'Pool2',
               'test3@example.com' => 'Pool3',
+              ...
+            )
+
+    %NameList = (
+              'test1@example.com' => {
+                Name  => 'Pool1',
+                Queue => 'Junk',
+              },
+              'test2@example.com' => {
+                Name  => 'Pool2',
+                Queue => 'Misc',
+              },
+              'test3@example.com' => {
+                Name  => 'Pool3',
+                Queue => 'Raw',
+              },
               ...
             )
 
@@ -80,19 +100,37 @@ sub NameList {
     # get object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
-    my $AddressPools = $ConfigObject->Get('Address::Pools');
-    if ( !IsHashRefWithData($AddressPools) ) {
+    my $ConfigItems = $ConfigObject->Get('PostMaster::AddressPool') || {};
+    if ( !IsHashRefWithData($ConfigItems) ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "Address::Pools is not a hash ref!",
+            Message  => "PostMaster::AddressPool is not a hash ref!",
         );
         return;
     }
 
     my %NameList;
-    for my $PoolName ( keys $AddressPools->%* ) {
-        for my $Address ( $AddressPools->{$PoolName}->@* ) {
-            $NameList{ $Address } = $PoolName;
+    if ( $Param{QueueDefault} ) {
+
+        for my $ConfigItem ( keys $ConfigItems->%* ) {
+
+            for my $Address ( $ConfigItems->{$ConfigItem}->{Emails}->@* ) {
+                my %Data = (
+                    Name  => $ConfigItems->{$ConfigItem}->{Name},
+                    Queue => $ConfigItems->{$ConfigItem}->{QueueDefault},
+
+                );
+                $NameList{ $Address } = \%Data;
+            }
+        }
+    }
+    else {
+
+        for my $ConfigItem ( keys $ConfigItems->%* ) {
+
+            for my $Address ( $ConfigItems->{$ConfigItem}->{Emails}->@* ) {
+                $NameList{ $Address } = $ConfigItems->{$ConfigItem}->{Name};
+            }
         }
     }
 
@@ -141,7 +179,11 @@ sub NameLookup {
     my %QueueData = $QueueObject->QueueGet(
         ID => $QueueID,
     );
-    my $PoolName = $NameList{ $QueueData{Email} };
+
+    my $PoolName;
+    if ( $QueueData{Email} ) {
+        $PoolName = $NameList{ $QueueData{Email} };
+    }
 
     return $PoolName;
 }
@@ -245,9 +287,6 @@ sub FindLinkedTicket {
         Type      => 'Interdivisional',
         UserID    => $Param{UserID},
     );
-
-    # get address pools
-    my %NameList = $Self->NameList();
 
     for my $LinkedTicket ( keys %LinkedTickets ) {
 
