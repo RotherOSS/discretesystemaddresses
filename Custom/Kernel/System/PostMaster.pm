@@ -241,78 +241,81 @@ sub Run {
         ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
 # Rother OSS / DiscreteAddresses
-        # lookup address per pool name
-        my %AddressPoolNameList = $AddressPoolObject->NameList();
-
         # build mail address list
-        my %MailAddressList = $Self->_BuildMailAddressList(
+        my %MailAddressList = $Self->BuildMailAddressList(
             Params            => $GetParam,
             AddressPoolFilter => 1,
         );
 
-        if ( $TicketID ) {
+        if ( %MailAddressList ) {
 
-            $Param{AddressPool} = $AddressPoolObject->NameLookup(
-                TicketID => $TicketID,
-            );
-        }
-        elsif ( %MailAddressList ) {
+            # lookup address per pool name
+            my %AddressPoolNameList = $AddressPoolObject->NameList();
 
-            my $FirstAddress = ( keys %MailAddressList )[0];
-            $Param{AddressPool} = $AddressPoolNameList{ $FirstAddress };
-        }
+            if ( $TicketID ) {
 
-        # set origin X-OTOBO-Queue
-        $Self->{XOTOBOQueue} = $GetParam->{'X-OTOBO-Queue'};
+                $Param{AddressPool} = $AddressPoolObject->NameLookup(
+                    TicketID => $TicketID,
+                );
+            }
+            else {
 
-        ADDRESS:
-        for my $Address ( keys %MailAddressList ) {
-
-            # get address pool / queue
-            my $AddressPool  = $AddressPoolNameList{ $Address };
-            my $AddressQueue = $MailAddressList{ $Address };
-
-            if (
-                $Param{AddressPool}
-                &&
-                ( $Param{AddressPool} eq $AddressPoolNameList{ $Address } )
-            ) {
-
-                # set origin mail address pool and queue
-                $Self->{OrigMailQueue}       = $AddressQueue;
-                $Self->{OrigMailAddressPool} = $AddressPool;
-
-                next ADDRESS;
+                my $FirstAddress = ( keys %MailAddressList )[0];
+                $Param{AddressPool} = $AddressPoolNameList{ $FirstAddress };
             }
 
-            # check queue for address
-            my $MailQueue = $Self->_CheckAddressPoolQueue(
-                AddressPool  => $AddressPool,
+            # set origin X-OTOBO-Queue
+            $Self->{XOTOBOQueue} = $GetParam->{'X-OTOBO-Queue'};
+
+            ADDRESS:
+            for my $Address ( keys %MailAddressList ) {
+
+                # get address pool / queue
+                my $AddressPool  = $AddressPoolNameList{ $Address };
+                my $AddressQueue = $MailAddressList{ $Address };
+
+                if (
+                    $Param{AddressPool}
+                    &&
+                    ( $Param{AddressPool} eq $AddressPoolNameList{ $Address } )
+                ) {
+
+                    # set origin mail address pool and queue
+                    $Self->{OrigMailQueue}       = $AddressQueue;
+                    $Self->{OrigMailAddressPool} = $AddressPool;
+
+                    next ADDRESS;
+                }
+
+                # check queue for address
+                my $MailQueue = $Self->CheckAddressPoolQueue(
+                    AddressPool  => $AddressPool,
+                    XOTOBOQueue  => $Self->{XOTOBOQueue},
+                    AddressQueue => $AddressQueue,
+                );
+
+                my $GetTicketID = $Self->RecursivePostMasterRun(
+                    AddressPool      => $AddressPool,
+                    MailQueue        => $MailQueue,
+                    FollowUpTicketID => $TicketID,
+                );
+                push(@TicketIDsToLink, $GetTicketID);
+            }
+
+            # set communication log to origin
+            $Self->{CommunicationLogObject} = $Self->{OriginCommunicationLogObject};
+            $Self->_CreateMailObjects(
+                Data => $Self,
+            );
+
+            # check queue for origin mail address
+            my $MailQueue = $Self->CheckAddressPoolQueue(
+                AddressPool  => $Self->{OrigMailAddressPool},
                 XOTOBOQueue  => $Self->{XOTOBOQueue},
-                AddressQueue => $AddressQueue,
+                AddressQueue => $Self->{OrigMailQueue},
             );
-
-            my $GetTicketID = $Self->_RecursivePostMasterRun(
-                AddressPool      => $AddressPool,
-                MailQueue        => $MailQueue,
-                FollowUpTicketID => $TicketID,
-            );
-            push(@TicketIDsToLink, $GetTicketID);
+            $GetParam->{'X-OTOBO-Queue'} = $MailQueue;
         }
-
-        # set communication log to origin
-        $Self->{CommunicationLogObject} = $Self->{OriginCommunicationLogObject};
-        $Self->_CreateMailObjects(
-            Data => $Self,
-        );
-
-        # check queue for origin mail address
-        my $MailQueue = $Self->_CheckAddressPoolQueue(
-            AddressPool  => $Self->{OrigMailAddressPool},
-            XOTOBOQueue  => $Self->{XOTOBOQueue},
-            AddressQueue => $Self->{OrigMailQueue},
-        );
-        $GetParam->{'X-OTOBO-Queue'} = $MailQueue;
     }
     else {
 
@@ -790,11 +793,11 @@ sub GetEmailParams {
 }
 
 # Rother OSS / DiscreteAddresses
-=head2 _RecursivePostMasterRun()
+=head2 RecursivePostMasterRun()
 
 Recursive postmaster run for address pool
 
-    my $TicketID = $PostMasterObject->_RecursivePostMasterRun(
+    my $TicketID = $PostMasterObject->RecursivePostMasterRun(
         AddressPool      => 'Pool1',
         MailQueue        => 'Misc',
         FollowUpTicketID => 4,
@@ -806,7 +809,7 @@ Return:
 
 =cut
 
-sub _RecursivePostMasterRun {
+sub RecursivePostMasterRun {
     my ( $Self, %Param ) = @_;
 
     my $TicketID;
@@ -872,15 +875,15 @@ sub _RecursivePostMasterRun {
     return $TicketID;
 }
 
-=head2 _BuildMailAddressList()
+=head2 BuildMailAddressList()
 
 Build mail address list of To, Cc, Bcc ... as array or hash with queue
 
-    my @MailAddressList = $PostMasterObject->_BuildMailAddressList(
+    my @MailAddressList = $PostMasterObject->BuildMailAddressList(
         Params            => $GetParam,
     );
 
-    my %MailAddressList = $PostMasterObject->_BuildMailAddressList(
+    my %MailAddressList = $PostMasterObject->BuildMailAddressList(
         Params            => $GetParam,
         AddressPoolFilter => 1,
     );
@@ -903,7 +906,7 @@ Return:
 
 =cut
 
-sub _BuildMailAddressList {
+sub BuildMailAddressList {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
@@ -1016,11 +1019,11 @@ sub _BuildMailAddressList {
     return @AddressList;
 }
 
-=head2 _CheckAddressPoolQueue()
+=head2 CheckAddressPoolQueue()
 
 Get the mail queue depends on address pool
 
-    my $MailQueue = $PostMasterObject->_CheckAddressPoolQueue(
+    my $MailQueue = $PostMasterObject->CheckAddressPoolQueue(
         AddressPool  => 'Pool1',
         XOTOBOQueue  => 'Junk',
         AddressQueue => 'Misc',
@@ -1032,7 +1035,7 @@ Return:
 
 =cut
 
-sub _CheckAddressPoolQueue {
+sub CheckAddressPoolQueue {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff

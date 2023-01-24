@@ -1,18 +1,140 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_config version="2.0" init="Application">
-    <Setting Name="Address::Pools" Required="0" Valid="1">
-        <Description Translatable="1">Defines addresses in pools to communicate with each other as entities. Info: The X-OTOBO-... headers for queue will be ignored.</Description>
+    <Setting Name="PostMaster::AddressPool###Custom1" Required="0" Valid="1">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
             <Hash>
-                <DefaultItem>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
                     <Array>
-                        <Item></Item>
                     </Array>
-                </DefaultItem>
-                <Item Key='Pool1'>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom2" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
                     <Array>
-                        <Item></Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom3" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom4" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom5" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom6" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom7" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom8" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom9" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="PostMaster::AddressPool###Custom10" Required="0" Valid="0">
+        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name"></Item>
+                <Item Key="QueueDefault" ValueType="Entity" ValueEntityType="Queue"></Item>
+                <Item Key="Emails">
+                    <Array>
                     </Array>
                 </Item>
             </Hash>
