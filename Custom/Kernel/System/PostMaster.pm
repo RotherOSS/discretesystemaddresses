@@ -999,7 +999,7 @@ sub BuildMailAddressList {
                                 );
 
                                 if ( $Address eq $QueueData{Email} ) {
-                                    $QueueExist  = $QueueData{Name};
+                                    $QueueExist = $QueueData{Name};
                                     last;
                                 }
                             }
