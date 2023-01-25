@@ -161,4 +161,13 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="PostMaster::PreFilterModule###000-MatchMessageID" Required="1" Valid="1">
+        <Description Translatable="1">Module to check mail with message id already exist.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Module">Kernel::System::PostMaster::Filter::MatchMessageID</Item>
+            </Hash>
+        </Value>
+    </Setting>
 </otobo_config>
