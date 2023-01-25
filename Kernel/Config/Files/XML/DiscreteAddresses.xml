@@ -162,7 +162,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::PreFilterModule###000-MatchMessageID" Required="1" Valid="1">
-        <Description Translatable="1">Module to check mail with message id already exist.</Description>
+        <Description Translatable="1">Module to check if mail with message id already exist.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
             <Hash>
