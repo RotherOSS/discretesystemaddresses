@@ -96,9 +96,10 @@ sub ArticleGetByMessageID {
     # Get ticket and article ID from meta article table.
     return if !$DBObject->Prepare(
         SQL => '
-            SELECT Max(sa.id), sa.ticket_id FROM article sa
+            SELECT sa.id, sa.ticket_id FROM article sa
             LEFT JOIN article_data_mime sadm ON sa.id = sadm.article_id
             WHERE sadm.a_message_id_md5 = ?
+            ORDER BY sa.id DESC
         ',
         Bind  => [ \$MD5 ],
         Limit => 1,
