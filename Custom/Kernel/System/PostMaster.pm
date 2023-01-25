@@ -254,18 +254,23 @@ sub Run {
 
             if ( $TicketID ) {
 
+                $Self->{XOTOBOQueueKey} = 'X-OTOBO-FollowUp-Queue';
+
                 $Param{AddressPool} = $AddressPoolObject->NameLookup(
                     TicketID => $TicketID,
                 );
             }
             else {
 
+                $Self->{XOTOBOQueueKey} = 'X-OTOBO-Queue';
+
+                # set first address pool
                 my $FirstAddress = ( keys %MailAddressList )[0];
                 $Param{AddressPool} = $AddressPoolNameList{ $FirstAddress };
             }
 
-            # set origin X-OTOBO-Queue
-            $Self->{XOTOBOQueue} = $GetParam->{'X-OTOBO-Queue'};
+            # set origin X-OTOBO-Queue / X-OTOBO-FollowUp-Queue
+            $Self->{XOTOBOQueue} = $GetParam->{ $Self->{XOTOBOQueueKey} };
 
             ADDRESS:
             for my $Address ( keys %MailAddressList ) {
@@ -314,7 +319,7 @@ sub Run {
                 XOTOBOQueue  => $Self->{XOTOBOQueue},
                 AddressQueue => $Self->{OrigMailQueue},
             );
-            $GetParam->{'X-OTOBO-Queue'} = $MailQueue;
+            $GetParam->{ $Self->{XOTOBOQueueKey} } = $MailQueue;
         }
     }
     else {
@@ -329,7 +334,7 @@ sub Run {
         }
 
         if( $Param{MailQueue} ) {
-            $GetParam->{'X-OTOBO-Queue'} = $Param{MailQueue};
+            $GetParam->{ $Self->{XOTOBOQueueKey} } = $Param{MailQueue};
         }
     }
 # EO DiscreteAddresses
@@ -963,7 +968,6 @@ sub BuildMailAddressList {
         # get object
         my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
-        my %PoolNameUsed;
         my %FilteredAddressList;
         my %AddressPoolNameList = $AddressPoolObject->NameList(
             QueueDefault => 1,
@@ -974,17 +978,20 @@ sub BuildMailAddressList {
                 Valid => 1,
             );
 
-            for my $Address ( @AddressList ) {
+            for my $PoolName ( keys %AddressPoolNameList ) {
 
-                # use the first found address of every pool
-                for my $PoolAddress ( keys %AddressPoolNameList ) {
+                my $QueueExist;
+                my $MailAddress;
 
-                    my $PoolName = $AddressPoolNameList{$PoolAddress}{Name};
-                    if ( $Address eq $PoolAddress ) {
+                # get the first found address with valid queue
+                for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
 
-                        if ( !$PoolNameUsed{ $PoolName } ) {
+                    for my $Address ( @AddressList ) {
 
-                            my $QueueExist;
+                        if ( $Address eq $PoolAddress ) {
+
+                            $MailAddress = $Address;
+
                             for my $QueueID ( keys %Queues ) {
 
                                 my %QueueData = $QueueObject->QueueGet(
@@ -992,28 +999,28 @@ sub BuildMailAddressList {
                                 );
 
                                 if ( $Address eq $QueueData{Email} ) {
-                                    $QueueExist = $QueueData{Name};
+                                    $QueueExist  = $QueueData{Name};
                                     last;
                                 }
                             }
-
-                            if ( !$QueueExist ) {
-
-                                # Get queue default from config
-                                my $QueueDefault = $AddressPoolNameList{$PoolAddress}{Queue};
-                                if ( !$QueueDefault ) {
-                                    next;
-                                }
-                                $QueueExist = $QueueDefault;
-                            }
-
-                            $PoolNameUsed{ $PoolName }     = 1;
-                            $FilteredAddressList{$Address} = $QueueExist;
                         }
                     }
                 }
+
+                # Get queue default from config
+                if ( !$QueueExist ) {
+
+                    my $QueueDefault = $AddressPoolNameList{$PoolName}{QueueDefault};
+                    if ( !$MailAddress || !$QueueDefault ) {
+                        next;
+                    }
+                    $QueueExist = $QueueDefault;
+                }
+
+                $FilteredAddressList{$MailAddress} = $QueueExist;
             }
         }
+
         return %FilteredAddressList;
     }
 

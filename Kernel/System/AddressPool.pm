@@ -77,19 +77,19 @@ Return:
             )
 
     %NameList = (
-              'test1@example.com' => {
-                Name  => 'Pool1',
-                Queue => 'Junk',
-              },
-              'test2@example.com' => {
-                Name  => 'Pool2',
-                Queue => 'Misc',
-              },
-              'test3@example.com' => {
-                Name  => 'Pool3',
-                Queue => 'Raw',
-              },
-              ...
+                'Pool1' => {
+                    QueueDefault => 'Junk',
+                    Emails       => ['test1@example.com' ...],
+                },
+                'Pool2' => {
+                    QueueDefault => 'Misc',
+                    Emails       => ['test2@example.com' ...],
+                },
+                'Pool3' => {
+                    QueueDefault => 'Raw',
+                    Emails       => ['test3@example.com' ...],
+                },
+                ...
             )
 
 =cut
@@ -114,22 +114,19 @@ sub NameList {
 
         for my $ConfigItem ( keys $ConfigItems->%* ) {
 
-            for my $Address ( $ConfigItems->{$ConfigItem}->{Emails}->@* ) {
-                my %Data = (
-                    Name  => $ConfigItems->{$ConfigItem}->{Name},
-                    Queue => $ConfigItems->{$ConfigItem}->{QueueDefault},
-
-                );
-                $NameList{ $Address } = \%Data;
-            }
+            my %ConfigItemData = %{ $ConfigItems->{$ConfigItem} };
+            my $PoolName = $ConfigItemData{Name};
+            delete($ConfigItemData{Name});
+            $NameList{ $PoolName } = \%ConfigItemData;
         }
     }
     else {
 
         for my $ConfigItem ( keys $ConfigItems->%* ) {
 
-            for my $Address ( $ConfigItems->{$ConfigItem}->{Emails}->@* ) {
-                $NameList{ $Address } = $ConfigItems->{$ConfigItem}->{Name};
+            my %ConfigItemData = %{ $ConfigItems->{$ConfigItem} };
+            for my $Address ( $ConfigItemData{Emails}->@* ) {
+                $NameList{ $Address } = $ConfigItemData{Name};
             }
         }
     }
