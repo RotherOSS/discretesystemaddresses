@@ -836,15 +836,20 @@ sub RecursivePostMasterRun {
     # create connection details link
     my $OriginConnectionID    = $Self->{OriginCommunicationLogObject}->{Current}->{Connection};
     my $OriginCommunicationID = $Self->{OriginCommunicationLogObject}->{CommunicationID};
-    my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
-        "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$OriginCommunicationID;ObjectLogID=$OriginConnectionID";
+    if ( $OriginConnectionID && $OriginCommunicationID ) {
 
-    $CommunicationLogObject->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => 'Kernel::System::PostMaster::AddressPool::OriginalMail',
-        Value         => "For more details see: $DetailsLink",
-    );
+        my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
+            "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$OriginCommunicationID;ObjectLogID=$OriginConnectionID";
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::PostMaster::AddressPool::OriginalMail',
+            Value         => "For more details see: $DetailsLink",
+        );
+    }
+
+    # set new communication log
     $Self->{CommunicationLogObject} = $CommunicationLogObject;
 
     # create needed objects again
