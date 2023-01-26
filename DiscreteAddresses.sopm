@@ -21,5 +21,7 @@
         <File Permission="644" Location="Custom/Kernel/System/Ticket/Article/Backend/Email.pm"/>
         <File Permission="644" Location="Kernel/System/AddressPool.pm"/>
         <File Permission="644" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm"/>
+        <!-- Test -->
+        <File Permission="644" Location="scripts/test/PostMaster/DiscreteAddresses.t"/>
     </Filelist>
 </otobo_package>
