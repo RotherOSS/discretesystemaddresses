@@ -265,7 +265,7 @@ sub Run {
                 $Self->{XOTOBOQueueKey} = 'X-OTOBO-Queue';
 
                 # set first address pool
-                my $FirstAddress = ( keys %MailAddressList )[0];
+                my $FirstAddress = ( sort keys %MailAddressList )[0];
                 $Param{AddressPool} = $AddressPoolNameList{ $FirstAddress };
             }
 

@@ -64,8 +64,8 @@ DiscreteAddresses Test
 EOF
 
 # add system addresses
-my @SystemAddressIDs;
 my @SystemAddresses;
+my @SystemAddressIDs;
 for (0 .. 2) {
 
     my $SARandomID = $Helper->GetRandomID();
@@ -77,13 +77,13 @@ for (0 .. 2) {
         QueueID  => 1,
         UserID   => 1,
     );
-    push (@SystemAddressIDs, $SystemAddressID);
     push (@SystemAddresses, $SAName);
+    push (@SystemAddressIDs, $SystemAddressID);
 }
 
 # add queues
-my $QueueDefault;
 my @QueueIDs;
+my $QueueDefault;
 for my $Index (0 .. 2) {
 
     my $QName = 'Queue' .  $Helper->GetRandomID();
@@ -104,14 +104,14 @@ for my $Index (0 .. 2) {
 if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
     my %AddressPool;
-    for my $Index (1 .. 2) {
+    for my $Index (1 .. 3) {
 
         my $APName = 'AddressPool' . $Helper->GetRandomID();
         my %Data = %{ $ConfigObject->Get('PostMaster::AddressPool') };
         $AddressPool{'Custom' . $Index} = $Data{'Custom' . $Index};
         $AddressPool{'Custom' . $Index}{Name} = $APName;
         $AddressPool{'Custom' . $Index}{QueueDefault} = $QueueDefault;
-        $AddressPool{'Custom' . $Index}{Emails} = [ $SystemAddresses[$Index -1 ] ];
+        $AddressPool{'Custom' . $Index}{Emails} = [ $SystemAddresses[ $Index -1 ] ];
     }
 
     $Helper->ConfigSettingChange(
@@ -123,56 +123,93 @@ if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
 # filter test
 my @Tests = (
-    # Mail is sent to different adress pools, no follow-up
+    # New mail is sent to different adress pools, both linked
     {
-        Name        => 'Mail is sent to different adress pools, no follow-up',
-        From        => 'From: Customer <test@example.com>',
-        To          => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
-        Subject     => 'Subject: discrete addresses - test v1',
-        LTCount     => 1,
-        LTQueueID   => $QueueIDs[1],
-        OrigQueueID => $QueueIDs[0],
-        TicketCheck => 1,
+        Name             => 'New mail is sent to different adress pools, both linked',
+        From             => 'From: Customer <test@example.com>',
+        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
+        Subject          => 'Subject: address pool - test v1',
+        LTCount          => 1,
+        LTQueueID        => $QueueIDs[1],
+        LTArticleCount   => 1,
+        OrigQueueID      => $QueueIDs[0],
+        OrigArticleCount => 1,
+        TicketCheck      => 1,
+    },
+    # Follow-Up mail is sent to different adress pools, both linked
+    {
+        Name             => 'Follow-Up mail is sent to different adress pools, both linked',
+        From             => 'From: Customer <test@example.com>',
+        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
+        Subject          => 'Subject: Re: [Ticket#%s] address pool - test v2',
+        LTCount          => 1,
+        LTQueueID        => $QueueIDs[1],
+        LTArticleCount   => 2,
+        OrigQueueID      => $QueueIDs[0],
+        OrigArticleCount => 2,
+        TicketCheck      => 2,
+    },
+    # Follow-Up mail is sent to different adress pools, new ticket, both linked
+    {
+        Name             => 'Follow-Up mail is sent to different adress pools, new ticket, both linked',
+        From             => 'From: Customer <test@example.com>',
+        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[2],
+        Subject          => 'Subject: Re: [Ticket#%s] address pool - test v3',
+        LTCount          => 2,
+        LTQueueID        => $QueueIDs[2],
+        LTArticleCount   => 1,
+        OrigQueueID      => $QueueIDs[0],
+        OrigArticleCount => 3,
+        TicketCheck      => 2,
     },
 );
 
 # run tests
+my $GetTicketID;
 for my $Test ( @Tests ) {
+
     my @Return;
-    {
-        my $CommunicationLogObject = $Kernel::OM->Create(
-            'Kernel::System::CommunicationLog',
-            ObjectParams => {
-                Transport => 'Email',
-                Direction => 'Incoming',
-            },
-        );
-        $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
-        # build mail
-        my $Email = "Message-ID: <" . $Helper->GetRandomID() . "\@example.com>\n"
-            . $Test->{From} . "\n"
-            . $Test->{To} . "\n"
-            . $Test->{Subject} . "\n"
-            . $SPMail
-        ;
+    my $CommunicationLogObject = $Kernel::OM->Create(
+        'Kernel::System::CommunicationLog',
+        ObjectParams => {
+            Transport => 'Email',
+            Direction => 'Incoming',
+        },
+    );
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
-        my $PostMasterObject = Kernel::System::PostMaster->new(
-            CommunicationLogObject => $CommunicationLogObject,
-            Email                  => \$Email,
-            Debug                  => 2,
-        );
+    # build mail
+    if ( $GetTicketID ) {
 
-        @Return = $PostMasterObject->Run();
-
-        $CommunicationLogObject->ObjectLogStop(
-            ObjectLogType => 'Message',
-            Status        => 'Successful',
+        my $TicketNumber = $TicketObject->TicketNumberLookup(
+            TicketID => $GetTicketID,
         );
-        $CommunicationLogObject->CommunicationStop(
-            Status => 'Successful',
-        );
+        $Test->{Subject} = sprintf($Test->{Subject}, $TicketNumber);
     }
+    my $Email = "Message-ID: <" . $Helper->GetRandomID() . "\@example.com>\n"
+        . $Test->{From} . "\n"
+        . $Test->{To} . "\n"
+        . $Test->{Subject} . "\n"
+        . $SPMail
+    ;
+
+    my $PostMasterObject = Kernel::System::PostMaster->new(
+        CommunicationLogObject => $CommunicationLogObject,
+        Email                  => \$Email,
+        Debug                  => 2,
+    );
+
+    @Return = $PostMasterObject->Run();
+
+    $CommunicationLogObject->ObjectLogStop(
+        ObjectLogType => 'Message',
+        Status        => 'Successful',
+    );
+    $CommunicationLogObject->CommunicationStop(
+        Status => 'Successful',
+    );
+
     $Self->True(
         $Return[1] || 0,
         "$Test->{Name} - ticket of original mail exist",
@@ -183,47 +220,71 @@ for my $Test ( @Tests ) {
         "$Test->{Name} - article of original mail created",
     );
 
-    my $NewTicketID  = $Return[1];
+    if ( !$GetTicketID ) {
+        $GetTicketID = $Return[1];
+    }
+
     my $LinkedTicket = $LinkObject->LinkList(
         Object => 'Ticket',
-        Key    => $NewTicketID,
+        Key    => $GetTicketID,
         State  => 'Valid',
         Type   => 'Interdivisional',
         UserID => 1,
     );
-    my $LTCount = keys %{ $LinkedTicket };
+    my $LTCount = keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} };
 
     $Self->Is(
         $LTCount || 0,
         $Test->{LTCount},
-        "$Test->{Name} - linked ticket of original mail exist",
+        "$Test->{Name} - linked ticket(s) of original mail exist",
     );
 
-    my ($LinkedTicketID) = keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} };
-    my @TicketIDs = (
-        $NewTicketID,
-        $LinkedTicketID,
-    );
+    my @TicketIDs;
+    for my $LTID ( sort keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} } ) {
+        push (@TicketIDs, $LTID);
+    }
+    my $LinkedTicketID = $TicketIDs[ $LTCount -1 ];
+    push (@TicketIDs, $GetTicketID);
 
-    my @TicketQueueIDs;
+    my %TicketData;
     for my $TicketID ( @TicketIDs ) {
+
+        my @Articles = $ArticleObject->ArticleList(
+            TicketID => $TicketID,
+        );
+        my $ArticleCount = scalar(@Articles);
 
         my $TicketQueueID = $TicketObject->TicketQueueID(
             TicketID => $TicketID,
         );
-        push(@TicketQueueIDs, $TicketQueueID);
+
+        my %Data = (
+            QueueID      => $TicketQueueID,
+            ArticleCount => $ArticleCount,
+        );
+        $TicketData{$TicketID} = \%Data;
     }
-    @TicketQueueIDs = sort @TicketQueueIDs;
 
     $Self->Is(
-        $TicketQueueIDs[0] || 0,
-        $Test->{OrigQueueID},
-        "$Test->{Name} - queue of original ticket correctly.",
+        $TicketData{$GetTicketID}{ArticleCount} || 0,
+        $Test->{OrigArticleCount},
+        "$Test->{Name} - article count of original ticket is correct.",
     );
     $Self->Is(
-        $TicketQueueIDs[1] || 0,
+        $TicketData{$LinkedTicketID}{ArticleCount} || 0,
+        $Test->{LTArticleCount},
+        "$Test->{Name} - article count of linked ticket is correct.",
+    );
+
+    $Self->Is(
+        $TicketData{$GetTicketID}{QueueID} || 0,
+        $Test->{OrigQueueID},
+        "$Test->{Name} - queue of original ticket is correct.",
+    );
+    $Self->Is(
+        $TicketData{$LinkedTicketID}{QueueID} || 0,
         $Test->{LTQueueID},
-        "$Test->{Name} - queue of linked ticket correctly.",
+        "$Test->{Name} - queue of linked ticket is correct.",
     );
 }
 
