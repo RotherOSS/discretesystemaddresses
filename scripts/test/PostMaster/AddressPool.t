@@ -126,7 +126,7 @@ my @Tests = (
     # Mail is sent to different adress pools, no follow-up
     {
         Name        => 'Mail is sent to different adress pools, no follow-up',
-        From        => 'From: Customer <test@example-' . $Helper->GetRandomID() . '.com>',
+        From        => 'From: Customer <test@example.com>',
         To          => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
         Subject     => 'Subject: discrete addresses - test v1',
         LTCount     => 1,
@@ -150,7 +150,12 @@ for my $Test ( @Tests ) {
         $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
         # build mail
-        my $Email = $Test->{From} . "\n" . $Test->{To} . "\n" . $Test->{Subject} . "\n" . $SPMail;
+        my $Email = "Message-ID: <" . $Helper->GetRandomID() . "\@example.com>\n"
+            . $Test->{From} . "\n"
+            . $Test->{To} . "\n"
+            . $Test->{Subject} . "\n"
+            . $SPMail
+        ;
 
         my $PostMasterObject = Kernel::System::PostMaster->new(
             CommunicationLogObject => $CommunicationLogObject,
@@ -200,24 +205,23 @@ for my $Test ( @Tests ) {
         $LinkedTicketID,
     );
 
-    my @QueueIDs;
+    my @TicketQueueIDs;
     for my $TicketID ( @TicketIDs ) {
 
-        my $QueueID = $TicketObject->TicketQueueID(
+        my $TicketQueueID = $TicketObject->TicketQueueID(
             TicketID => $TicketID,
         );
-        push(@QueueIDs, $QueueID);
+        push(@TicketQueueIDs, $TicketQueueID);
     }
-    @QueueIDs = sort @QueueIDs;
+    @TicketQueueIDs = sort @TicketQueueIDs;
 
     $Self->Is(
-        $QueueIDs[0] || 0,
+        $TicketQueueIDs[0] || 0,
         $Test->{OrigQueueID},
         "$Test->{Name} - queue of original ticket correctly.",
     );
-
     $Self->Is(
-        $QueueIDs[1] || 0,
+        $TicketQueueIDs[1] || 0,
         $Test->{LTQueueID},
         "$Test->{Name} - queue of linked ticket correctly.",
     );

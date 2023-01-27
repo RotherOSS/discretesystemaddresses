@@ -12,9 +12,9 @@
     <IntroInstall Type="pre" Lang="de" Title="Information"><![CDATA[<br><br> Vielen Dank dass Sie sich f&uuml;r unser Paket entschieden haben!<br>F&uuml;r mehr Informationen zu unseren Diensleistungen besuchen Sie: <br><br><div style="margin-left: 40px;"><a href="https://rother-oss.com/">https://rother-oss.com/</a></div><br><br>]]></IntroInstall>
     <Filelist>
         <!-- Config -->
-        <File Permission="644" Location="Kernel/Config/Files/XML/DiscreteAddresses.xml"/>
+        <File Permission="644" Location="Kernel/Config/Files/XML/AddressPool.xml"/>
         <!-- Language -->
-        <File Permission="644" Location="Kernel/Language/de_DiscreteAddresses.pm"/>
+        <File Permission="644" Location="Kernel/Language/de_AddressPool.pm"/>
         <!-- System -->
         <File Permission="644" Location="Custom/Kernel/System/PostMaster.pm"/>
         <File Permission="644" Location="Custom/Kernel/System/SystemAddress.pm"/>
@@ -22,6 +22,6 @@
         <File Permission="644" Location="Kernel/System/AddressPool.pm"/>
         <File Permission="644" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm"/>
         <!-- Test -->
-        <File Permission="644" Location="scripts/test/PostMaster/DiscreteAddresses.t"/>
+        <File Permission="644" Location="scripts/test/PostMaster/AddressPool.t"/>
     </Filelist>
 </otobo_package>
