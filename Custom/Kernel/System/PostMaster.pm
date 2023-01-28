@@ -88,6 +88,10 @@ sub new {
     $Self->_CreateMailObjects(
         Data => $Self,
     );
+
+    # set queue header names
+    $Self->{XOQHeader}  = 'X-OTOBO-Queue';
+    $Self->{XOFQHeader} = 'X-OTOBO-FollowUp-Queue';
 # EO DiscreteAddresses
 
     # get config object
@@ -254,7 +258,7 @@ sub Run {
 
             if ( $TicketID ) {
 
-                $Self->{XOTOBOQueueKey} = 'X-OTOBO-FollowUp-Queue';
+                $Self->{XOTOBOQueueKey} = $Self->{XOFQHeader};
 
                 $Param{AddressPool} = $AddressPoolObject->NameLookup(
                     TicketID => $TicketID,
@@ -262,7 +266,7 @@ sub Run {
             }
             else {
 
-                $Self->{XOTOBOQueueKey} = 'X-OTOBO-Queue';
+                $Self->{XOTOBOQueueKey} = $Self->{XOQHeader};
 
                 # set first address pool
                 my $FirstAddress = ( sort keys %MailAddressList )[0];
@@ -331,6 +335,9 @@ sub Run {
                 AddressPool => $Param{AddressPool},
                 UserID      => $Self->{PostmasterUserID},
             );
+            if ( !$TicketID ) {
+                $Self->{XOTOBOQueueKey} = $Self->{XOQHeader};
+            }
         }
 
         if( $Param{MailQueue} ) {
