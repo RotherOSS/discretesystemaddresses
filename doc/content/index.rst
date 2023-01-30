@@ -29,14 +29,16 @@ Usage
 
 Setup
 -----
-Go in the system configuration and search for "PostMaster::AddressPool".
+Go to "Admin -> System Configuration" and search for "PostMaster::AddressPool".
 
-You have to choose one of them for example and define a pool name, default queue with their mail addresses.
+You have to choose one of them for example and define a pool name with their mail addresses and default queue.
+
 
 .. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
   :align: center
   :width: 500
   :alt: Screenshot showing address pool settings.
+
 
 Configuration Reference
 -----------------------
@@ -44,49 +46,49 @@ Configuration Reference
 Core::Email::PostMaster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PostMaster::AddressPool###Custom2
+PostMaster::AddressPool###Custom01
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom4
+PostMaster::AddressPool###Custom02
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom1
+PostMaster::AddressPool###Custom03
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom6
+PostMaster::AddressPool###Custom04
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom8
+PostMaster::AddressPool###Custom05
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom5
+PostMaster::AddressPool###Custom06
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom7
+PostMaster::AddressPool###Custom07
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Defines addresses in pool to communicate with each other as entities.
+
+PostMaster::AddressPool###Custom08
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Defines addresses in pool to communicate with each other as entities.
+
+PostMaster::AddressPool###Custom09
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Defines addresses in pool to communicate with each other as entities.
+
+PostMaster::AddressPool###Custom010
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
 PostMaster::PreFilterModule###000-MatchMessageID
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Module to check if mail with message id already exist.
-
-PostMaster::AddressPool###Custom10
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom3
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom9
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
 
 Core::LinkObject
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
