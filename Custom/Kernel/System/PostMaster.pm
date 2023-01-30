@@ -170,9 +170,10 @@ sub Run {
     # check if follow up
     my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
+    # get config objects
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+
 # Rother OSS / DiscreteSystemAddresses
-    # get objects
-    my $ConfigObject      = $Kernel::OM->Get('Kernel::Config');
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
     my @TicketIDsToLink;
