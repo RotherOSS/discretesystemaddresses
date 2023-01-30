@@ -371,9 +371,8 @@ $Param{Signature}";
                 Address  => $Address,
                 TicketID => $Self->{TicketID},
             );
-            if ( $IsLocal )
+            if ( $IsLocal ) {
 # EO DiscreteSystemAddresses
-            {
                 $LayoutObject->Block( Name => 'BounceToCustomerGenericServerErrorMsg' );
                 $Error{'BounceToInvalid'} = 'ServerError';
             }

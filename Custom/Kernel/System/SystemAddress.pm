@@ -361,6 +361,7 @@ for local addresses.
 
     my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
         Address  => 'info@example.com',
+        QueueID  => 4,                   # (optional)
         TicketID => 1,                   # (optional)
     );
 
@@ -400,13 +401,18 @@ sub SystemAddressIsLocalAddress {
     );
 
     # check if address exist in same address pool of ticket
-    if ( $Param{TicketID} && $AddressPool ) {
+    if (
+        $AddressPool
+        && ( $Param{QueueID} || $Param{TicketID} )
+    ) {
 
-        my $QueueID = $TicketObject->TicketQueueID(
-            TicketID => $Param{TicketID},
-        );
-
-        my $Queue = $QueueObject->QueueLookup(
+        my $QueueID = $Param{QueueID};
+        if ( $Param{TicketID} ) {
+            $QueueID = $TicketObject->TicketQueueID(
+                TicketID => $Param{TicketID},
+            );
+        }
+        $Queue = $QueueObject->QueueLookup(
             QueueID => $QueueID,
         );
 
