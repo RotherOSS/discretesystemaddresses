@@ -360,8 +360,8 @@ Checks if the given address is a local (system) address. Returns true
 for local addresses.
 
     my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
-        Queue   => 'Junk',              # (optional)
-        Address => 'info@example.com',
+        Address  => 'info@example.com',
+        TicketID => 1,                   # (optional)
     );
 
     if ( $IsLocal ) {
@@ -389,20 +389,30 @@ sub SystemAddressIsLocalAddress {
     }
 
 # Rother OSS / DiscreteSystemAddresses
-    # get object
+    # get objects
+    my $QueueObject       = $Kernel::OM->Get('Kernel::System::Queue');
+    my $TicketObject      = $Kernel::OM->Get('Kernel::System::Ticket');
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
-    # get pool name
-    my $PoolName = $AddressPoolObject->NameLookup(
+    # get address pool
+    my $AddressPool = $AddressPoolObject->NameLookup(
         Address => $Param{Address},
     );
 
-    # check exist address in queue
-    if ( $Param{Queue} && $PoolName ) {
+    # check if address exist in same address pool of ticket
+    if ( $Param{TicketID} && $AddressPool ) {
+
+        my $QueueID = $TicketObject->TicketQueueID(
+            TicketID => $Param{TicketID},
+        );
+
+        my $Queue = $QueueObject->QueueLookup(
+            QueueID => $QueueID,
+        );
 
         my $QueueExist = $AddressPoolObject->QueueCheck(
-            Queue       => $Param{Queue},
-            AddressPool => $PoolName,
+            Queue       => $Queue,
+            AddressPool => $AddressPool,
         );
 
         return $QueueExist;
