@@ -353,12 +353,18 @@ sub SystemAddressList {
     return %List;
 }
 
+# Rother OSS / DiscreteSystemAddresses
 =head2 SystemAddressIsLocalAddress()
 
 Checks if the given address is a local (system) address. Returns true
 for local addresses.
 
-    if ( $SystemAddressObject->SystemAddressIsLocalAddress( Address => 'info@example.com' ) ) {
+    my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
+        Address  => 'info@example.com',
+        TicketID => 1,                   # (optional)
+    );
+
+    if ( $IsLocal ) {
         # is local
     }
     else {
@@ -366,6 +372,7 @@ for local addresses.
     }
 
 =cut
+# EO DiscreteSystemAddresses
 
 sub SystemAddressIsLocalAddress {
     my ( $Self, %Param ) = @_;
@@ -382,20 +389,33 @@ sub SystemAddressIsLocalAddress {
     }
 
 # Rother OSS / DiscreteSystemAddresses
-    # get object
+    # get objects
+    my $QueueObject       = $Kernel::OM->Get('Kernel::System::Queue');
+    my $TicketObject      = $Kernel::OM->Get('Kernel::System::Ticket');
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
-    # check exist system address in pool
-    my %AddressPoolNameList = $AddressPoolObject->NameList();
-    if ( %AddressPoolNameList ) {
+    # get address pool
+    my $AddressPool = $AddressPoolObject->NameLookup(
+        Address => $Param{Address},
+    );
 
-        for my $PoolAddress ( keys %AddressPoolNameList ) {
+    # check if address exist in same address pool of ticket
+    if ( $Param{TicketID} && $AddressPool ) {
 
-            my $PoolName = $AddressPoolNameList{$PoolAddress};
-            if ( $Param{Address} eq $PoolAddress ) {
-                return;
-            }
-        }
+        my $QueueID = $TicketObject->TicketQueueID(
+            TicketID => $Param{TicketID},
+        );
+
+        my $Queue = $QueueObject->QueueLookup(
+            QueueID => $QueueID,
+        );
+
+        my $QueueExist = $AddressPoolObject->QueueCheck(
+            Queue       => $Queue,
+            AddressPool => $AddressPool,
+        );
+
+        return $QueueExist;
     }
 # EO DiscreteSystemAddresses
 

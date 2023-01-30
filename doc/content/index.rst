@@ -33,13 +33,10 @@ Go to "Admin -> System Configuration" and search for "PostMaster::AddressPool".
 
 You have to choose one of them for example and define a pool name with their mail addresses and default queue.
 
-
-
 .. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
   :align: center
   :width: 500
   :alt: Screenshot showing address pool settings.
-
 
 Configuration Reference
 -----------------------

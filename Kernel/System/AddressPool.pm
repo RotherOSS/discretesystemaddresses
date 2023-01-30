@@ -136,7 +136,11 @@ sub NameList {
 
 =head2 NameLookup()
 
-Get address pool name of ticket
+Get address pool name by address or ticket id
+
+    my $PoolName = $AddressPoolObject->NameLookup(
+        Address  => 'test1@example.com',
+    );
 
     my $PoolName = $AddressPoolObject->NameLookup(
         TicketID => 4,
@@ -152,10 +156,10 @@ sub NameLookup {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
-    if ( !$Param{TicketID} ) {
+    if ( !$Param{Address} && !$Param{TicketID} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "Need TicketID!",
+            Message  => "Need Address or TicketID!",
         );
         return;
     }
@@ -167,6 +171,12 @@ sub NameLookup {
     # get address pool name list
     my %NameList = $Self->NameList();
 
+    my $PoolName;
+    if ( $Param{Address} ) {
+        $PoolName = $NameList{ $Param{Address} };
+        return $PoolName;
+    }
+
     # get ticket queue id
     my $QueueID = $TicketObject->TicketQueueID(
         TicketID => $Param{TicketID},
@@ -177,7 +187,6 @@ sub NameLookup {
         ID => $QueueID,
     );
 
-    my $PoolName;
     if ( $QueueData{Email} ) {
         $PoolName = $NameList{ $QueueData{Email} };
     }
