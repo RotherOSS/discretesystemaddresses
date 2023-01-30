@@ -353,12 +353,18 @@ sub SystemAddressList {
     return %List;
 }
 
+# Rother OSS / DiscreteSystemAddresses
 =head2 SystemAddressIsLocalAddress()
 
 Checks if the given address is a local (system) address. Returns true
 for local addresses.
 
-    if ( $SystemAddressObject->SystemAddressIsLocalAddress( Address => 'info@example.com' ) ) {
+    my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
+        Queue   => 'Junk',              # (optional)
+        Address => 'info@example.com',
+    );
+
+    if ( $IsLocal ) {
         # is local
     }
     else {
@@ -366,6 +372,7 @@ for local addresses.
     }
 
 =cut
+# EO DiscreteSystemAddresses
 
 sub SystemAddressIsLocalAddress {
     my ( $Self, %Param ) = @_;
@@ -385,17 +392,20 @@ sub SystemAddressIsLocalAddress {
     # get object
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
 
-    # check exist system address in pool
-    my %AddressPoolNameList = $AddressPoolObject->NameList();
-    if ( %AddressPoolNameList ) {
+    # get pool name
+    my $PoolName = $AddressPoolObject->NameLookup(
+        Address => $Param{Address},
+    );
 
-        for my $PoolAddress ( keys %AddressPoolNameList ) {
+    # check exist address in queue
+    if ( $Param{Queue} && $PoolName ) {
 
-            my $PoolName = $AddressPoolNameList{$PoolAddress};
-            if ( $Param{Address} eq $PoolAddress ) {
-                return;
-            }
-        }
+        my $QueueExist = $AddressPoolObject->QueueCheck(
+            Queue       => $Param{Queue},
+            AddressPool => $PoolName,
+        );
+
+        return $QueueExist;
     }
 # EO DiscreteSystemAddresses
 
