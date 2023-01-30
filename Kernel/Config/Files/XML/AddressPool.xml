@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_config version="2.0" init="Application">
-    <Setting Name="PostMaster::AddressPool###Custom1" Required="0" Valid="1">
+    <Setting Name="PostMaster::AddressPool###Custom01" Required="0" Valid="1">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -14,7 +14,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom2" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom02" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -28,7 +28,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom3" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom03" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -42,7 +42,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom4" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom04" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -56,7 +56,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom5" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom05" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -70,7 +70,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom6" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom06" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -84,7 +84,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom7" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom07" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -98,7 +98,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom8" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom08" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
@@ -112,7 +112,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom9" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom09" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>

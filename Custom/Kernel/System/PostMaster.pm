@@ -227,14 +227,24 @@ sub Run {
 
         # should I ignore the incoming mail?
         if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
+# Rother OSS / DiscreteSystemAddresses
+
+            my $Info = "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
+                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).";
+
             $Self->{CommunicationLogObject}->ObjectLog(
                 ObjectLogType => 'Message',
                 Priority      => 'Info',
                 Key           => 'Kernel::System::PostMaster',
-                Value         =>
-                    "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
-                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
+                Value         => $Info,
             );
+
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'info',
+                Message  => $Info,
+            );
+
+# EO DiscreteSystemAddresses
             return (5);
         }
 
