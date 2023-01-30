@@ -126,7 +126,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::AddressPool###Custom010" Required="0" Valid="0">
+    <Setting Name="PostMaster::AddressPool###Custom10" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>

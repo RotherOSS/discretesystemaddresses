@@ -34,6 +34,7 @@ Go to "Admin -> System Configuration" and search for "PostMaster::AddressPool".
 You have to choose one of them for example and define a pool name with their mail addresses and default queue.
 
 
+
 .. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
   :align: center
   :width: 500
@@ -82,7 +83,7 @@ PostMaster::AddressPool###Custom09
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
-PostMaster::AddressPool###Custom010
+PostMaster::AddressPool###Custom10
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
 
