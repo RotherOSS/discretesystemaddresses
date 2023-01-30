@@ -108,10 +108,10 @@ if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
         my $APName = 'AddressPool' . $Helper->GetRandomID();
         my %Data = %{ $ConfigObject->Get('PostMaster::AddressPool') };
-        $AddressPool{'Custom' . $Index} = $Data{'Custom' . $Index};
-        $AddressPool{'Custom' . $Index}{Name} = $APName;
-        $AddressPool{'Custom' . $Index}{QueueDefault} = $QueueDefault;
-        $AddressPool{'Custom' . $Index}{Emails} = [ $SystemAddresses[ $Index -1 ] ];
+        $AddressPool{'Custom0' . $Index} = $Data{'Custom0' . $Index};
+        $AddressPool{'Custom0' . $Index}{Name} = $APName;
+        $AddressPool{'Custom0' . $Index}{QueueDefault} = $QueueDefault;
+        $AddressPool{'Custom0' . $Index}{Emails} = [ $SystemAddresses[ $Index -1 ] ];
     }
 
     $Helper->ConfigSettingChange(
