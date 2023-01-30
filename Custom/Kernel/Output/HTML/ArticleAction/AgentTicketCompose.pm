@@ -176,12 +176,14 @@ sub GetConfig {
         for my $Address (@Addresses) {
             my $Email = $EmailParser->GetEmailAddress( Email => $Address );
             next ADDRESS if !$Email;
-# Rother OSS / DiscreteSystemAddresses
+
+            # Rother OSS / DiscreteSystemAddresses
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                 Address  => $Email,
                 TicketID => $Param{Ticket}->{TicketID},
             );
-# EO DiscreteSystemAddresses
+
+            # EO DiscreteSystemAddresses
             next ADDRESS if $IsLocal;
             $RecipientCount++;
         }

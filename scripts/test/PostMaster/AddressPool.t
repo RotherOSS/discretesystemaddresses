@@ -63,13 +63,13 @@ AddressPool Test
 
 EOF
 
-# add system addresses
-my @SystemAddresses;
+    # add system addresses
+    my @SystemAddresses;
 my @SystemAddressIDs;
-for (0 .. 2) {
+for ( 0 .. 2 ) {
 
-    my $SARandomID = $Helper->GetRandomID();
-    my $SAName     = $SARandomID . '@example.com';
+    my $SARandomID      = $Helper->GetRandomID();
+    my $SAName          = $SARandomID . '@example.com';
     my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
         Name     => $SAName,
         Realname => 'SystemAddress' . $SARandomID,
@@ -77,41 +77,41 @@ for (0 .. 2) {
         QueueID  => 1,
         UserID   => 1,
     );
-    push (@SystemAddresses, $SAName);
-    push (@SystemAddressIDs, $SystemAddressID);
+    push( @SystemAddresses,  $SAName );
+    push( @SystemAddressIDs, $SystemAddressID );
 }
 
 # add queues
 my @QueueIDs;
 my $QueueDefault;
-for my $Index (0 .. 2) {
+for my $Index ( 0 .. 2 ) {
 
-    my $QName = 'Queue' .  $Helper->GetRandomID();
+    my $QName   = 'Queue' . $Helper->GetRandomID();
     my $QueueID = $QueueObject->QueueAdd(
-        Name                => $QName,
-        ValidID             => 1,
-        GroupID             => 1,
-        SystemAddressID     => $SystemAddressIDs[$Index],
-        SalutationID        => 1,
-        SignatureID         => 1,
-        UserID              => 1,
+        Name            => $QName,
+        ValidID         => 1,
+        GroupID         => 1,
+        SystemAddressID => $SystemAddressIDs[$Index],
+        SalutationID    => 1,
+        SignatureID     => 1,
+        UserID          => 1,
     );
     $QueueDefault = $QName;
-    push(@QueueIDs, $QueueID);
+    push( @QueueIDs, $QueueID );
 }
 
 # set address pools
 if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
     my %AddressPool;
-    for my $Index (1 .. 3) {
+    for my $Index ( 1 .. 3 ) {
 
         my $APName = 'AddressPool' . $Helper->GetRandomID();
-        my %Data = %{ $ConfigObject->Get('PostMaster::AddressPool') };
-        $AddressPool{'Custom0' . $Index} = $Data{'Custom0' . $Index};
-        $AddressPool{'Custom0' . $Index}{Name} = $APName;
-        $AddressPool{'Custom0' . $Index}{QueueDefault} = $QueueDefault;
-        $AddressPool{'Custom0' . $Index}{Emails} = [ $SystemAddresses[ $Index -1 ] ];
+        my %Data   = %{ $ConfigObject->Get('PostMaster::AddressPool') };
+        $AddressPool{ 'Custom0' . $Index }               = $Data{ 'Custom0' . $Index };
+        $AddressPool{ 'Custom0' . $Index }{Name}         = $APName;
+        $AddressPool{ 'Custom0' . $Index }{QueueDefault} = $QueueDefault;
+        $AddressPool{ 'Custom0' . $Index }{Emails}       = [ $SystemAddresses[ $Index - 1 ] ];
     }
 
     $Helper->ConfigSettingChange(
@@ -123,6 +123,7 @@ if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
 # filter test
 my @Tests = (
+
     # New mail is sent to different adress pools, both linked
     {
         Name             => 'New mail is sent to different adress pools, both linked',
@@ -136,6 +137,7 @@ my @Tests = (
         OrigArticleCount => 1,
         TicketCheck      => 1,
     },
+
     # Follow-Up mail is sent to different adress pools, both linked
     {
         Name             => 'Follow-Up mail is sent to different adress pools, both linked',
@@ -149,6 +151,7 @@ my @Tests = (
         OrigArticleCount => 2,
         TicketCheck      => 2,
     },
+
     # Follow-Up mail is sent to different adress pools, new ticket, both linked
     {
         Name             => 'Follow-Up mail is sent to different adress pools, new ticket, both linked',
@@ -166,7 +169,7 @@ my @Tests = (
 
 # run tests
 my $GetTicketID;
-for my $Test ( @Tests ) {
+for my $Test (@Tests) {
 
     my @Return;
 
@@ -180,19 +183,19 @@ for my $Test ( @Tests ) {
     $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
     # build mail
-    if ( $GetTicketID ) {
+    if ($GetTicketID) {
 
         my $TicketNumber = $TicketObject->TicketNumberLookup(
             TicketID => $GetTicketID,
         );
-        $Test->{Subject} = sprintf($Test->{Subject}, $TicketNumber);
+        $Test->{Subject} = sprintf( $Test->{Subject}, $TicketNumber );
     }
     my $Email = "Message-ID: <" . $Helper->GetRandomID() . "\@example.com>\n"
         . $Test->{From} . "\n"
         . $Test->{To} . "\n"
         . $Test->{Subject} . "\n"
         . $SPMail
-    ;
+        ;
 
     my $PostMasterObject = Kernel::System::PostMaster->new(
         CommunicationLogObject => $CommunicationLogObject,
@@ -241,13 +244,13 @@ for my $Test ( @Tests ) {
 
     my @TicketIDs;
     for my $LTID ( sort keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} } ) {
-        push (@TicketIDs, $LTID);
+        push( @TicketIDs, $LTID );
     }
-    my $LinkedTicketID = $TicketIDs[ $LTCount -1 ];
-    push (@TicketIDs, $GetTicketID);
+    my $LinkedTicketID = $TicketIDs[ $LTCount - 1 ];
+    push( @TicketIDs, $GetTicketID );
 
     my %TicketData;
-    for my $TicketID ( @TicketIDs ) {
+    for my $TicketID (@TicketIDs) {
 
         my @Articles = $ArticleObject->ArticleList(
             TicketID => $TicketID,

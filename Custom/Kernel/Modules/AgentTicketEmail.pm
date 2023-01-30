@@ -1574,12 +1574,14 @@ sub Run {
                     $Error{ $Parameter . 'ErrorType' } = $Parameter . $CheckItemObject->CheckErrorType() . 'ServerErrorMsg';
                     $Error{ $Parameter . 'Invalid' }   = 'ServerError';
                 }
-# Rother OSS / DiscreteSystemAddresses
+
+                # Rother OSS / DiscreteSystemAddresses
                 my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                     Address => $Email->address(),
                     QueueID => $GetParam{QueueID},
                 );
-# EO DiscreteSystemAddresses
+
+                # EO DiscreteSystemAddresses
                 if ($IsLocal) {
                     $Error{ $Parameter . 'IsLocalAddress' } = 'ServerError';
                 }

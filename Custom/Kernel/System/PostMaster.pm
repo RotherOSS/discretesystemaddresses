@@ -38,6 +38,12 @@ our @ObjectDependencies = (
     'Kernel::System::Queue',
     'Kernel::System::State',
     'Kernel::System::Ticket',
+
+    # Rother OSS / DiscreteSystemAddresses
+    'Kernel::System::Log',
+    'Kernel::System::PostMaster::AddressPool',
+
+    # EO DiscreteSystemAddresses
     'Kernel::System::Ticket::Article',
 );
 
@@ -75,15 +81,17 @@ sub new {
     # check needed objects
     $Self->{Email}                  = $Param{Email}                  || die "Got no Email!";
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
-# Rother OSS / DiscreteSystemAddresses
+
+    # Rother OSS / DiscreteSystemAddresses
     $Self->{OriginCommunicationLogObject} = $Self->{CommunicationLogObject};
-# EO DiscreteSystemAddresses
+
+    # EO DiscreteSystemAddresses
 
     $Self->{ParserObject} = Kernel::System::EmailParser->new(
         Email => $Param{Email},
     );
 
-# Rother OSS / DiscreteSystemAddresses
+    # Rother OSS / DiscreteSystemAddresses
     # create needed objects
     $Self->_CreateMailObjects(
         Data => $Self,
@@ -92,7 +100,8 @@ sub new {
     # set queue header names
     $Self->{XOTOBOQueueHeader}         = 'X-OTOBO-Queue';
     $Self->{XOTOBOFollowUpQueueHeader} = 'X-OTOBO-FollowUp-Queue';
-# EO DiscreteSystemAddresses
+
+    # EO DiscreteSystemAddresses
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
@@ -173,12 +182,13 @@ sub Run {
     # get config objects
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
-# Rother OSS / DiscreteSystemAddresses
+    # Rother OSS / DiscreteSystemAddresses
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
-# EO DiscreteSystemAddresses
+
+        # EO DiscreteSystemAddresses
 
         # run all PreFilterModules (modify email params)
         if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
@@ -245,19 +255,19 @@ sub Run {
         # check if follow up (again, with new GetParam)
         ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
-# Rother OSS / DiscreteSystemAddresses
+        # Rother OSS / DiscreteSystemAddresses
         # build mail address list
         my %MailAddressList = $Self->BuildMailAddressList(
             Params            => $GetParam,
             AddressPoolFilter => 1,
         );
 
-        if ( %MailAddressList ) {
+        if (%MailAddressList) {
 
             # lookup address per pool name
             my %AddressPoolNameList = $AddressPoolObject->NameList();
 
-            if ( $TicketID ) {
+            if ($TicketID) {
 
                 $Self->{XOTOBOQueueKey} = $Self->{XOTOBOFollowUpQueueHeader};
 
@@ -271,7 +281,7 @@ sub Run {
 
                 # set first address pool
                 my $FirstAddress = ( sort keys %MailAddressList )[0];
-                $Param{AddressPool} = $AddressPoolNameList{ $FirstAddress };
+                $Param{AddressPool} = $AddressPoolNameList{$FirstAddress};
             }
 
             # set origin X-OTOBO-Queue / X-OTOBO-FollowUp-Queue
@@ -281,14 +291,15 @@ sub Run {
             for my $Address ( keys %MailAddressList ) {
 
                 # get address pool / queue
-                my $AddressPool  = $AddressPoolNameList{ $Address };
-                my $AddressQueue = $MailAddressList{ $Address };
+                my $AddressPool  = $AddressPoolNameList{$Address};
+                my $AddressQueue = $MailAddressList{$Address};
 
                 if (
                     $Param{AddressPool}
                     &&
-                    ( $Param{AddressPool} eq $AddressPoolNameList{ $Address } )
-                ) {
+                    ( $Param{AddressPool} eq $AddressPoolNameList{$Address} )
+                    )
+                {
 
                     # set origin mail address pool and queue
                     $Self->{OrigMailQueue}       = $AddressQueue;
@@ -309,7 +320,7 @@ sub Run {
                     MailQueue        => $MailQueue,
                     FollowUpTicketID => $TicketID,
                 );
-                push(@TicketIDsToLink, $GetTicketID);
+                push( @TicketIDsToLink, $GetTicketID );
             }
 
             # set communication log to origin
@@ -341,11 +352,12 @@ sub Run {
             }
         }
 
-        if( $Param{MailQueue} ) {
+        if ( $Param{MailQueue} ) {
             $GetParam->{ $Self->{XOTOBOQueueKey} } = $Param{MailQueue};
         }
     }
-# EO DiscreteSystemAddresses
+
+    # EO DiscreteSystemAddresses
 
     # run all PreCreateFilterModules
     if ( ref $ConfigObject->Get('PostMaster::PreCreateFilterModule') eq 'HASH' ) {
@@ -610,9 +622,9 @@ sub Run {
         }
     }
 
-# Rother OSS / DiscreteSystemAddresses
+    # Rother OSS / DiscreteSystemAddresses
     # create link of type 'Interdivisional' to tickets
-    push(@TicketIDsToLink, $Return[1]);
+    push( @TicketIDsToLink, $Return[1] );
     if ( scalar(@TicketIDsToLink) > 1 ) {
 
         $AddressPoolObject->InterdivisionalTicketLinkAdd(
@@ -620,7 +632,8 @@ sub Run {
             UserID    => $Self->{PostmasterUserID},
         );
     }
-# EO DiscreteSystemAddresses
+
+    # EO DiscreteSystemAddresses
 
     return @Return;
 }
@@ -806,6 +819,7 @@ sub GetEmailParams {
 }
 
 # Rother OSS / DiscreteSystemAddresses
+
 =head2 RecursivePostMasterRun()
 
 Recursive postmaster run for address pool
@@ -846,7 +860,7 @@ sub RecursivePostMasterRun {
     my $OriginCommunicationID = $Self->{OriginCommunicationLogObject}->{CommunicationID};
     if ( $OriginConnectionID && $OriginCommunicationID ) {
 
-        my $DetailsLink   = $ConfigObject->{HttpType}. "://" . $ConfigObject->{FQDN} .
+        my $DetailsLink = $ConfigObject->{HttpType} . "://" . $ConfigObject->{FQDN} .
             "/otobo/index.pl?Action=AdminCommunicationLog;Subaction=Zoom;CommunicationID=$OriginCommunicationID;ObjectLogID=$OriginConnectionID";
 
         $CommunicationLogObject->ObjectLog(
@@ -936,7 +950,7 @@ sub BuildMailAddressList {
         return;
     }
 
-    if ( !IsHashRefWithData($Param{Params}) ) {
+    if ( !IsHashRefWithData( $Param{Params} ) ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
             Message  => "Need Params as hash ref!",
@@ -960,7 +974,7 @@ sub BuildMailAddressList {
 
         my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
         EMAIL:
-        for my $Email ( @Emails ) {
+        for my $Email (@Emails) {
 
             next EMAIL if !$Email;
 
@@ -968,9 +982,9 @@ sub BuildMailAddressList {
 
             next EMAIL if !$Address;
 
-            if ( !$AddressUsed{ $Address } ) {
-                push(@AddressList, $Address);
-                $AddressUsed{ $Address } = 1;
+            if ( !$AddressUsed{$Address} ) {
+                push( @AddressList, $Address );
+                $AddressUsed{$Address} = 1;
             }
 
         }
@@ -985,7 +999,7 @@ sub BuildMailAddressList {
         my %AddressPoolNameList = $AddressPoolObject->NameList(
             QueueDefault => 1,
         );
-        if ( %AddressPoolNameList ) {
+        if (%AddressPoolNameList) {
 
             my %Queues = $QueueObject->QueueList(
                 Valid => 1,
@@ -1002,7 +1016,7 @@ sub BuildMailAddressList {
                 for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
 
                     ADDRESS:
-                    for my $Address ( @AddressList ) {
+                    for my $Address (@AddressList) {
 
                         if ( $Address eq $PoolAddress ) {
 
@@ -1012,7 +1026,7 @@ sub BuildMailAddressList {
                         }
                     }
 
-                    if ( $MailAddress ) {
+                    if ($MailAddress) {
 
                         QUEUEID:
                         for my $QueueID ( keys %Queues ) {
@@ -1089,8 +1103,8 @@ sub CheckAddressPoolQueue {
     # Check queue in adress pool
     my $QueueExist;
     my $MailQueue = $Param{XOTOBOQueue};
-    if ( $MailQueue ) {
-        $QueueExist  = $AddressPoolObject->QueueCheck(
+    if ($MailQueue) {
+        $QueueExist = $AddressPoolObject->QueueCheck(
             Queue       => $MailQueue,
             AddressPool => $Param{AddressPool},
         );
@@ -1132,6 +1146,7 @@ sub _CreateMailObjects {
 
     return 1;
 }
+
 # EO DiscreteSystemAddresses
 
 1;

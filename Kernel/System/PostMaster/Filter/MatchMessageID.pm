@@ -64,7 +64,7 @@ sub Run {
         MessageID => $MessageID,
     );
 
-    if ( %Article ) {
+    if (%Article) {
 
         $Self->_AddCommunicationLog(
             Message => sprintf(

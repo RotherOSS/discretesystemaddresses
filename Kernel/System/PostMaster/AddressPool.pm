@@ -115,9 +115,9 @@ sub NameList {
         for my $ConfigItem ( keys $ConfigItems->%* ) {
 
             my %ConfigItemData = %{ $ConfigItems->{$ConfigItem} };
-            my $PoolName = $ConfigItemData{Name};
-            delete($ConfigItemData{Name});
-            $NameList{ $PoolName } = \%ConfigItemData;
+            my $PoolName       = $ConfigItemData{Name};
+            delete( $ConfigItemData{Name} );
+            $NameList{$PoolName} = \%ConfigItemData;
         }
     }
     else {
@@ -126,7 +126,7 @@ sub NameList {
 
             my %ConfigItemData = %{ $ConfigItems->{$ConfigItem} };
             for my $Address ( $ConfigItemData{Emails}->@* ) {
-                $NameList{ $Address } = $ConfigItemData{Name};
+                $NameList{$Address} = $ConfigItemData{Name};
             }
         }
     }
@@ -286,12 +286,12 @@ sub FindLinkedTicket {
 
     # get linked tickets
     my %LinkedTickets = $LinkObject->LinkKeyListWithData(
-        Object1   => 'Ticket',
-        Key1      => $Param{TicketID},
-        Object2   => 'Ticket',
-        State     => 'Valid',
-        Type      => 'Interdivisional',
-        UserID    => $Param{UserID},
+        Object1 => 'Ticket',
+        Key1    => $Param{TicketID},
+        Object2 => 'Ticket',
+        State   => 'Valid',
+        Type    => 'Interdivisional',
+        UserID  => $Param{UserID},
     );
 
     for my $LinkedTicket ( keys %LinkedTickets ) {
@@ -307,7 +307,8 @@ sub FindLinkedTicket {
             $LTPoolName
             &&
             ( $LTPoolName eq $Param{AddressPool} )
-        ) {
+            )
+        {
 
             return ( $LTTicketNumber, $LTTicketID );
         }
@@ -341,7 +342,7 @@ sub InterdivisionalTicketLinkAdd {
         }
     }
 
-    if ( !IsArrayRefWithData($Param{TicketIDs}) ) {
+    if ( !IsArrayRefWithData( $Param{TicketIDs} ) ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
             Message  => "Need TicketIDs as array ref!",
