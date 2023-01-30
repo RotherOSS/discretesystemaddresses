@@ -1191,13 +1191,15 @@ sub SendEmail {
                 $Error{ $Line . 'Invalid' }   = 'ServerError';
             }
 
-            # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                 Address  => $Email->address(),
                 TicketID => $Self->{TicketID},
             );
 
-            # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
+
             if ($IsLocal) {
                 $Error{ $Line . 'IsLocalAddress' } = 'ServerError';
             }

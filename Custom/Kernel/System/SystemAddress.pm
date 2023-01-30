@@ -25,12 +25,14 @@ our @ObjectDependencies = (
     'Kernel::System::Log',
     'Kernel::System::Valid',
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     'Kernel::System::Queue',
     'Kernel::System::Ticket',
     'Kernel::System::PostMaster::AddressPool',
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
+
 );
 
 =head1 NAME
@@ -395,7 +397,8 @@ sub SystemAddressIsLocalAddress {
         }
     }
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     # get objects
     my $QueueObject       = $Kernel::OM->Get('Kernel::System::Queue');
     my $TicketObject      = $Kernel::OM->Get('Kernel::System::Ticket');
@@ -431,7 +434,7 @@ sub SystemAddressIsLocalAddress {
         return $QueueExist;
     }
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     return $Self->SystemAddressQueueID(%Param);
 }

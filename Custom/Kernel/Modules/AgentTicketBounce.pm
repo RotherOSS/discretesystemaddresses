@@ -367,14 +367,16 @@ $Param{Signature}";
         for my $Email ( Mail::Address->parse( $Param{BounceTo} ) ) {
             my $Address = $Email->address();
 
-            # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                 Address  => $Address,
                 TicketID => $Self->{TicketID},
             );
             if ($IsLocal) {
 
-                # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
+
                 $LayoutObject->Block( Name => 'BounceToCustomerGenericServerErrorMsg' );
                 $Error{'BounceToInvalid'} = 'ServerError';
             }

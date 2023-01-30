@@ -39,11 +39,13 @@ our @ObjectDependencies = (
     'Kernel::System::State',
     'Kernel::System::Ticket',
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     'Kernel::System::Log',
     'Kernel::System::PostMaster::AddressPool',
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
+
     'Kernel::System::Ticket::Article',
 );
 
@@ -82,16 +84,18 @@ sub new {
     $Self->{Email}                  = $Param{Email}                  || die "Got no Email!";
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     $Self->{OriginCommunicationLogObject} = $Self->{CommunicationLogObject};
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     $Self->{ParserObject} = Kernel::System::EmailParser->new(
         Email => $Param{Email},
     );
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     # create needed objects
     $Self->_CreateMailObjects(
         Data => $Self,
@@ -101,7 +105,7 @@ sub new {
     $Self->{XOTOBOQueueHeader}         = 'X-OTOBO-Queue';
     $Self->{XOTOBOFollowUpQueueHeader} = 'X-OTOBO-FollowUp-Queue';
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     # get config object
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
@@ -182,13 +186,14 @@ sub Run {
     # get config objects
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
 
-        # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
         # run all PreFilterModules (modify email params)
         if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
@@ -255,7 +260,8 @@ sub Run {
         # check if follow up (again, with new GetParam)
         ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
-        # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
         # build mail address list
         my %MailAddressList = $Self->BuildMailAddressList(
             Params            => $GetParam,
@@ -357,7 +363,7 @@ sub Run {
         }
     }
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     # run all PreCreateFilterModules
     if ( ref $ConfigObject->Get('PostMaster::PreCreateFilterModule') eq 'HASH' ) {
@@ -622,7 +628,8 @@ sub Run {
         }
     }
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     # create link of type 'Interdivisional' to tickets
     push( @TicketIDsToLink, $Return[1] );
     if ( scalar(@TicketIDsToLink) > 1 ) {
@@ -633,7 +640,7 @@ sub Run {
         );
     }
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     return @Return;
 }

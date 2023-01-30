@@ -93,7 +93,9 @@ sub ArticleGetByMessageID {
     my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
 
     # Get ticket and article ID from meta article table.
-    # Rother OSS / DiscreteSystemAddresses
+
+# Rother OSS / DiscreteSystemAddresses
+
     #    return if !$DBObject->Prepare(
     #        SQL => '
     #            SELECT sa.id, sa.ticket_id FROM article sa
@@ -114,7 +116,7 @@ sub ArticleGetByMessageID {
         Limit => 1,
     );
 
-    # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
 
     my $Count = 0;
     while ( my @Row = $DBObject->FetchrowArray() ) {
@@ -127,7 +129,8 @@ sub ArticleGetByMessageID {
     return if $Count == 0;
     return if !$Param{TicketID} || !$Param{ArticleID};
 
-    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
     #    # More than one reference found! That should not happen, since 'a message_id' should be unique!
     #    if ( $Count > 1 ) {
     #        $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -137,7 +140,8 @@ sub ArticleGetByMessageID {
     #        );
     #        return;
     #    }
-    # EO DiscreteSystemAddresses
+
+# EO DiscreteSystemAddresses
 
     return $Self->ArticleGet(
         %Param,

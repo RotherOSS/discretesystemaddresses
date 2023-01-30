@@ -225,14 +225,16 @@ sub Run {
                 for my $Email ( Mail::Address->parse( $GetParam{To} ) ) {
                     my $Address = $Email->address();
 
-                    # Rother OSS / DiscreteSystemAddresses
+# Rother OSS / DiscreteSystemAddresses
+
                     my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                         Address  => $Address,
                         TicketID => $Self->{TicketID},
                     );
                     if ($IsLocal) {
 
-                        # EO DiscreteSystemAddresses
+# EO DiscreteSystemAddresses
+
                         $LayoutObject->Block( Name => 'ToCustomerGenericServerErrorMsg' );
                         $Error{'ToInvalid'} = 'ServerError';
                     }
