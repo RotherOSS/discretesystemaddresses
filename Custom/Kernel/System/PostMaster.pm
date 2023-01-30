@@ -90,8 +90,8 @@ sub new {
     );
 
     # set queue header names
-    $Self->{XOQHeader}  = 'X-OTOBO-Queue';
-    $Self->{XOFQHeader} = 'X-OTOBO-FollowUp-Queue';
+    $Self->{XOTOBOQueueHeader}         = 'X-OTOBO-Queue';
+    $Self->{XOTOBOFollowUpQueueHeader} = 'X-OTOBO-FollowUp-Queue';
 # EO DiscreteSystemAddresses
 
     # get config object
@@ -174,7 +174,7 @@ sub Run {
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
 # Rother OSS / DiscreteSystemAddresses
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
@@ -227,24 +227,14 @@ sub Run {
 
         # should I ignore the incoming mail?
         if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
-# Rother OSS / DiscreteSystemAddresses
-
-            my $Info = "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
-                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).";
-
             $Self->{CommunicationLogObject}->ObjectLog(
                 ObjectLogType => 'Message',
                 Priority      => 'Info',
                 Key           => 'Kernel::System::PostMaster',
-                Value         => $Info,
+                Value         =>
+                    "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
+                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
             );
-
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'info',
-                Message  => $Info,
-            );
-
-# EO DiscreteSystemAddresses
             return (5);
         }
 
@@ -269,7 +259,7 @@ sub Run {
 
             if ( $TicketID ) {
 
-                $Self->{XOTOBOQueueKey} = $Self->{XOFQHeader};
+                $Self->{XOTOBOQueueKey} = $Self->{XOTOBOFollowUpQueueHeader};
 
                 $Param{AddressPool} = $AddressPoolObject->NameLookup(
                     TicketID => $TicketID,
@@ -277,7 +267,7 @@ sub Run {
             }
             else {
 
-                $Self->{XOTOBOQueueKey} = $Self->{XOQHeader};
+                $Self->{XOTOBOQueueKey} = $Self->{XOTOBOQueueHeader};
 
                 # set first address pool
                 my $FirstAddress = ( sort keys %MailAddressList )[0];
@@ -347,7 +337,7 @@ sub Run {
                 UserID      => $Self->{PostmasterUserID},
             );
             if ( !$TicketID ) {
-                $Self->{XOTOBOQueueKey} = $Self->{XOQHeader};
+                $Self->{XOTOBOQueueKey} = $Self->{XOTOBOQueueHeader};
             }
         }
 
@@ -989,7 +979,7 @@ sub BuildMailAddressList {
     if ( $Param{AddressPoolFilter} ) {
 
         # get object
-        my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+        my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
         my %FilteredAddressList;
         my %AddressPoolNameList = $AddressPoolObject->NameList(
@@ -1001,32 +991,45 @@ sub BuildMailAddressList {
                 Valid => 1,
             );
 
+            POOLNAME:
             for my $PoolName ( keys %AddressPoolNameList ) {
 
                 my $QueueExist;
                 my $MailAddress;
 
                 # get the first found address with valid queue
+                POOLADDRESS:
                 for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
 
+                    ADDRESS:
                     for my $Address ( @AddressList ) {
 
                         if ( $Address eq $PoolAddress ) {
 
                             $MailAddress = $Address;
 
-                            for my $QueueID ( keys %Queues ) {
+                            last ADDRESS;
+                        }
+                    }
 
-                                my %QueueData = $QueueObject->QueueGet(
-                                    ID => $QueueID,
-                                );
+                    if ( $MailAddress ) {
 
-                                if ( $Address eq $QueueData{Email} ) {
-                                    $QueueExist = $QueueData{Name};
-                                    last;
-                                }
+                        QUEUEID:
+                        for my $QueueID ( keys %Queues ) {
+
+                            my %QueueData = $QueueObject->QueueGet(
+                                ID => $QueueID,
+                            );
+
+                            if ( $MailAddress eq $QueueData{Email} ) {
+
+                                $QueueExist = $QueueData{Name};
+
+                                last QUEUEID;
                             }
                         }
+
+                        last POOLADDRESS;
                     }
                 }
 
@@ -1035,7 +1038,7 @@ sub BuildMailAddressList {
 
                     my $QueueDefault = $AddressPoolNameList{$PoolName}{QueueDefault};
                     if ( !$MailAddress || !$QueueDefault ) {
-                        next;
+                        next POOLNAME;
                     }
                     $QueueExist = $QueueDefault;
                 }
@@ -1081,7 +1084,7 @@ sub CheckAddressPoolQueue {
     }
 
     # get object
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     # Check queue in adress pool
     my $QueueExist;

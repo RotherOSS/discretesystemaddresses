@@ -14,7 +14,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 # --
 
-package Kernel::System::AddressPool;
+package Kernel::System::PostMaster::AddressPool;
 
 use strict;
 use warnings;
@@ -31,7 +31,7 @@ our @ObjectDependencies = (
 
 =head1 NAME
 
-Kernel::System::AddressPool - all address pool functions
+Kernel::System::PostMaster::AddressPool - all address pool functions
 
 =head1 DESCRIPTION
 
@@ -43,7 +43,7 @@ Global module to find addresses in pools.
 
 create an object
 
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
 =cut
 

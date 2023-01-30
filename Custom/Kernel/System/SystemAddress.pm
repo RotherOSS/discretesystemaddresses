@@ -19,14 +19,14 @@ package Kernel::System::SystemAddress;
 use strict;
 use warnings;
 
-use Kernel::System::VariableCheck qw(IsHashRefWithData);
-
 our @ObjectDependencies = (
     'Kernel::System::Cache',
     'Kernel::System::DB',
     'Kernel::System::Log',
     'Kernel::System::Valid',
-    'Kernel::System::AddressPool',
+# Rother OSS / DiscreteSystemAddresses
+    'Kernel::System::PostMaster::AddressPool',
+# EO DiscreteSystemAddresses
 );
 
 =head1 NAME
@@ -393,7 +393,7 @@ sub SystemAddressIsLocalAddress {
     # get objects
     my $QueueObject       = $Kernel::OM->Get('Kernel::System::Queue');
     my $TicketObject      = $Kernel::OM->Get('Kernel::System::Ticket');
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::AddressPool');
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     # get address pool
     my $AddressPool = $AddressPoolObject->NameLookup(
