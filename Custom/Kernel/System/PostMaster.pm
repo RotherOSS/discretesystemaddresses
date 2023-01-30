@@ -821,9 +821,9 @@ sub GetEmailParams {
 Recursive postmaster run for address pool
 
     my $TicketID = $PostMasterObject->RecursivePostMasterRun(
-        AddressPool      => 'Pool1',
-        MailQueue        => 'Misc',
-        FollowUpTicketID => 4,
+        AddressPool      => 'Pool1',   # (optional)
+        MailQueue        => 'Misc',    # (optional)
+        FollowUpTicketID => 4,         # (optional)
     );
 
 Return:
@@ -913,7 +913,7 @@ Build mail address list of To, Cc, Bcc ... as array or hash with queue
 
     my %MailAddressList = $PostMasterObject->BuildMailAddressList(
         Params            => $GetParam,
-        AddressPoolFilter => 1,
+        AddressPoolFilter => 1,         # (optional)
     );
 
 Return:
@@ -1056,7 +1056,7 @@ Get the mail queue depends on address pool
 
     my $MailQueue = $PostMasterObject->CheckAddressPoolQueue(
         AddressPool  => 'Pool1',
-        XOTOBOQueue  => 'Junk',
+        XOTOBOQueue  => 'Junk',   # (optional)
         AddressQueue => 'Misc',
     );
 
