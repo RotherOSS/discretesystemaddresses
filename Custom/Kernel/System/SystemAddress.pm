@@ -412,7 +412,7 @@ sub SystemAddressIsLocalAddress {
                 TicketID => $Param{TicketID},
             );
         }
-        $Queue = $QueueObject->QueueLookup(
+        my $Queue = $QueueObject->QueueLookup(
             QueueID => $QueueID,
         );
 
