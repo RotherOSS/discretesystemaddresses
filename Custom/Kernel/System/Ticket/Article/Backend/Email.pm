@@ -92,7 +92,7 @@ sub ArticleGetByMessageID {
 
     my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
 
-# Rother OSS / DiscreteAddresses
+# Rother OSS / DiscreteSystemAddresses
     # Get ticket and article ID from meta article table.
     return if !$DBObject->Prepare(
         SQL => '
@@ -125,7 +125,7 @@ sub ArticleGetByMessageID {
     #     );
     #     return;
     # }
-# EO DiscreteAddresses
+# EO DiscreteSystemAddresses
 
     return $Self->ArticleGet(
         %Param,
