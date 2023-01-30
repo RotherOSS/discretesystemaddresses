@@ -21,6 +21,16 @@
         <File Permission="644" Location="Custom/Kernel/System/Ticket/Article/Backend/Email.pm"/>
         <File Permission="644" Location="Kernel/System/AddressPool.pm"/>
         <File Permission="644" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm"/>
+        <!-- Modules -->
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketBounce.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketCompose.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketEmail.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketEmailOutbound.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketEmailResend.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketForward.pm"/>
+        <File Permission="644" Location="Custom/Kernel/Modules/AgentTicketMerge.pm"/>
+        <!-- Output -->
+        <File Permission="644" Location="Custom/Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm"/>
         <!-- Test -->
         <File Permission="644" Location="scripts/test/PostMaster/AddressPool.t"/>
     </Filelist>
