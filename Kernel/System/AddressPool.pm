@@ -362,27 +362,22 @@ sub InterdivisionalTicketLinkAdd {
     my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
 
     # link tickets
-    for my $SourceTicketID ( @TicketIDs ) {
-        for my $TargetTicketID ( @TicketIDs ) {
-
-            if ( $SourceTicketID == $TargetTicketID ) {
-                next;
-            }
-
+    for my $i ( 0 .. $#TicketIDs ) {
+        for my $j ( $i+1 .. $#TicketIDs ) {
             my $Success = $LinkObject->LinkAdd(
                 SourceObject => 'Ticket',
-                SourceKey    => $SourceTicketID,
+                SourceKey    => $TicketIDs[$i],
                 TargetObject => 'Ticket',
-                TargetKey    => $TargetTicketID,
+                TargetKey    => $TicketIDs[$j],
                 Type         => 'Interdivisional',
                 State        => 'Valid',
                 UserID       => $Param{UserID},
             );
-            if ( !$Success ) {
 
+            if ( !$Success ) {
                 $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority      => 'error',
-                    Message         => "Can't create a interdivisional link from ticket (ID: $SourceTicketID) to ticket (ID: $TargetTicketID)",
+                    Priority => 'error',
+                    Message  => "Can't create an interdivisional link from ticket (ID: $TicketIDs[$i]) to ticket (ID: $TicketIDs[$j])",
                 );
             }
         }
