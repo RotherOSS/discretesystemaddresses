@@ -173,7 +173,13 @@ sub NameLookup {
 
     my $PoolName;
     if ( $Param{Address} ) {
+
+        # remove spaces
+        $Param{Address} =~ s/\s+//g;
+
+        # set address pool name
         $PoolName = $NameList{ $Param{Address} };
+
         return $PoolName;
     }
 
@@ -182,7 +188,7 @@ sub NameLookup {
         TicketID => $Param{TicketID},
     );
 
-    # set ticket pool name
+    # set address pool name
     my %QueueData = $QueueObject->QueueGet(
         ID => $QueueID,
     );
