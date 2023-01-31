@@ -1019,17 +1019,17 @@ sub BuildMailAddressList {
                 my $MailAddress;
 
                 # get the first found address with valid queue
-                POOLADDRESS:
-                for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
+                ADDRESS:
+                for my $Address (@AddressList) {
 
-                    ADDRESS:
-                    for my $Address (@AddressList) {
+                    POOLADDRESS:
+                    for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
 
                         if ( $Address eq $PoolAddress ) {
 
                             $MailAddress = $Address;
 
-                            last ADDRESS;
+                            last POOLADDRESS;
                         }
                     }
 
@@ -1050,7 +1050,7 @@ sub BuildMailAddressList {
                             }
                         }
 
-                        last POOLADDRESS;
+                        last ADDRESS;
                     }
                 }
 
