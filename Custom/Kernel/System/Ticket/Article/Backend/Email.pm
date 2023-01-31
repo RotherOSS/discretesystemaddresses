@@ -96,15 +96,15 @@ sub ArticleGetByMessageID {
 
 # Rother OSS / DiscreteSystemAddresses
 
-    #    return if !$DBObject->Prepare(
-    #        SQL => '
-    #            SELECT sa.id, sa.ticket_id FROM article sa
-    #            LEFT JOIN article_data_mime sadm ON sa.id = sadm.article_id
-    #            WHERE sadm.a_message_id_md5 = ?
-    #        ',
-    #        Bind  => [ \$MD5 ],
-    #        Limit => 10,
-    #    );
+#   return if !$DBObject->Prepare(
+#       SQL => '
+#           SELECT sa.id, sa.ticket_id FROM article sa
+#           LEFT JOIN article_data_mime sadm ON sa.id = sadm.article_id
+#           WHERE sadm.a_message_id_md5 = ?
+#       ',
+#       Bind  => [ \$MD5 ],
+#       Limit => 10,
+#   );
     return if !$DBObject->Prepare(
         SQL => '
             SELECT sa.id, sa.ticket_id FROM article sa
@@ -131,15 +131,15 @@ sub ArticleGetByMessageID {
 
 # Rother OSS / DiscreteSystemAddresses
 
-    #    # More than one reference found! That should not happen, since 'a message_id' should be unique!
-    #    if ( $Count > 1 ) {
-    #        $Kernel::OM->Get('Kernel::System::Log')->Log(
-    #            Priority => 'notice',
-    #            Message  =>
-    #                "The MessageID '$Param{MessageID}' is in your database more than one time! That should not happen, since 'a message_id' should be unique!",
-    #        );
-    #        return;
-    #    }
+#   # More than one reference found! That should not happen, since 'a message_id' should be unique!
+#   if ( $Count > 1 ) {
+#       $Kernel::OM->Get('Kernel::System::Log')->Log(
+#           Priority => 'notice',
+#           Message  =>
+#               "The MessageID '$Param{MessageID}' is in your database more than one time! That should not happen, since 'a message_id' should be unique!",
+#       );
+#       return;
+#   }
 
 # EO DiscreteSystemAddresses
 

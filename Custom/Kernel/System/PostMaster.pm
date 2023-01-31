@@ -975,7 +975,7 @@ sub BuildMailAddressList {
     my %AddressUsed;
     my @AddressList;
     HEADER:
-    for my $Header (qw(To Cc Bcc)) {
+    for my $Header (qw(Resent-To Envelope-To To Cc Delivered-To X-Original-To)) {
 
         next HEADER if !$GetParam{$Header};
 
