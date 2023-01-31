@@ -42,6 +42,7 @@ our @ObjectDependencies = (
 # Rother OSS / DiscreteSystemAddresses
 
     'Kernel::System::Log',
+    'Kernel::System::LinkObject',
     'Kernel::System::PostMaster::AddressPool',
 
 # EO DiscreteSystemAddresses
@@ -188,6 +189,7 @@ sub Run {
 
 # Rother OSS / DiscreteSystemAddresses
 
+    my $LinkObject        = $Kernel::OM->Get('Kernel::System::LinkObject');
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     my @TicketIDsToLink;
@@ -631,8 +633,22 @@ sub Run {
 # Rother OSS / DiscreteSystemAddresses
 
     # create link of type 'Interdivisional' to tickets
-    push( @TicketIDsToLink, $Return[1] );
-    if ( scalar(@TicketIDsToLink) > 1 ) {
+    if ( @TicketIDsToLink ) {
+
+        # get linked tickets
+        my $OwnTicketID   = $Return[1];
+        my %LinkedTickets = $LinkObject->LinkKeyList(
+            Object1 => 'Ticket',
+            Key1    => $OwnTicketID,
+            Object2 => 'Ticket',
+            State   => 'Valid',
+            Type    => 'Interdivisional',
+            UserID  => $Self->{PostmasterUserID},
+        );
+        push( @TicketIDsToLink, $OwnTicketID );
+
+        my %TicketIDUsed;
+        @TicketIDsToLink = map { $TicketIDUsed{$_}++ == 0 ? $_ : () } @TicketIDsToLink, keys %LinkedTickets;
 
         $AddressPoolObject->InterdivisionalTicketLinkAdd(
             TicketIDs => \@TicketIDsToLink,
