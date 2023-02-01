@@ -305,7 +305,7 @@ sub Run {
                     next ADDRESS;
                 }
 
-                my %EmailParams = %{ $GetParam };
+                my %EmailParams = %{$GetParam};
                 my $GetTicketID = $Self->RecursivePostMasterRun(
                     EmailParams      => \%EmailParams,
                     AddressPool      => $AddressPool,
