@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <otobo_package version="1.0">
     <Name>DiscreteSystemAddresses</Name>
     <Version>0.0.0</Version>
@@ -8,6 +8,24 @@
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
     <Description Lang="en">Treat addresses as separate entities, allowing to send emails from one to another, and treat incoming emails independently for each.</Description>
     <Description Lang="de">Es werden Adressen als separate Einheiten betrachtet, sodass E-Mails von einer zur anderen gesendet und eingehende E-Mails unabhängig voneinander behandelt werden können.</Description>
+    <Filelist>
+        <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
+        <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
+        <File Permission="660" Location="Custom/Kernel/System/PostMaster.pm" />
+        <File Permission="660" Location="Custom/Kernel/System/SystemAddress.pm" />
+        <File Permission="660" Location="Custom/Kernel/System/Ticket/Article/Backend/Email.pm" />
+        <File Permission="660" Location="Kernel/System/PostMaster/AddressPool.pm" />
+        <File Permission="660" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketBounce.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketCompose.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmail.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmailOutbound.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmailResend.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketForward.pm" />
+        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketMerge.pm" />
+        <File Permission="660" Location="Custom/Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm" />
+        <File Permission="660" Location="scripts/test/PostMaster/AddressPool.t" />
+    </Filelist>
     <IntroInstall Type="pre" Title="Install Information" Lang="en"><![CDATA[
         <br/>
         <strong>WELCOME</strong>
@@ -30,28 +48,4 @@
         ((enjoy))<br/>
         <br/>
     ]]></IntroInstall>
-    <Filelist>
-        <!-- Config -->
-        <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
-        <!-- Language -->
-        <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
-        <!-- System -->
-        <File Permission="660" Location="Custom/Kernel/System/PostMaster.pm" />
-        <File Permission="660" Location="Custom/Kernel/System/SystemAddress.pm" />
-        <File Permission="660" Location="Custom/Kernel/System/Ticket/Article/Backend/Email.pm" />
-        <File Permission="660" Location="Kernel/System/PostMaster/AddressPool.pm" />
-        <File Permission="660" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm" />
-        <!-- Modules -->
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketBounce.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketCompose.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmail.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmailOutbound.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketEmailResend.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketForward.pm" />
-        <File Permission="660" Location="Custom/Kernel/Modules/AgentTicketMerge.pm" />
-        <!-- Output -->
-        <File Permission="660" Location="Custom/Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm" />
-        <!-- Test -->
-        <File Permission="660" Location="scripts/test/PostMaster/AddressPool.t" />
-    </Filelist>
 </otobo_package>
