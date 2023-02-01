@@ -335,6 +335,8 @@ sub Run {
 
     if ($Param{AddressPool}) {
 
+        $GetParam->{AddressPool} = $Param{AddressPool};
+
         XQUEUEHEADER:
         for my $XQueueHeader (qw(X-OTOBO-Queue X-OTOBO-FollowUp-Queue)) {
 
@@ -342,7 +344,7 @@ sub Run {
 
             my $QueueExist = $AddressPoolObject->QueueCheck(
                 Queue       => $GetParam->{$XQueueHeader},
-                AddressPool => $Param{AddressPool},
+                AddressPool => $GetParam->{AddressPool},
             );
 
             if ( !$QueueExist ) {
