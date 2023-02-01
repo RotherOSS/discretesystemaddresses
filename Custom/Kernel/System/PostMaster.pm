@@ -633,7 +633,7 @@ sub Run {
 # Rother OSS / DiscreteSystemAddresses
 
     # create link of type 'Interdivisional' to tickets
-    if ( @TicketIDsToLink ) {
+    if (@TicketIDsToLink) {
 
         # get linked tickets
         my $OwnTicketID   = $Return[1];
