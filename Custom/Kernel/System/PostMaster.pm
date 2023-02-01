@@ -333,18 +333,21 @@ sub Run {
         }
     }
 
-    XQUEUEHEADER:
-    for my $XQueueHeader (qw(X-OTOBO-Queue X-OTOBO-FollowUp-Queue)) {
+    if ($Param{AddressPool}) {
 
-        next XQUEUEHEADER if !$GetParam->{$XQueueHeader};
+        XQUEUEHEADER:
+        for my $XQueueHeader (qw(X-OTOBO-Queue X-OTOBO-FollowUp-Queue)) {
 
-        my $QueueExist = $AddressPoolObject->QueueCheck(
-            Queue       => $GetParam->{$XQueueHeader},
-            AddressPool => $Param{AddressPool},
-        );
+            next XQUEUEHEADER if !$GetParam->{$XQueueHeader};
 
-        if ( !$QueueExist ) {
-            delete( $GetParam->{$XQueueHeader} );
+            my $QueueExist = $AddressPoolObject->QueueCheck(
+                Queue       => $GetParam->{$XQueueHeader},
+                AddressPool => $Param{AddressPool},
+            );
+
+            if ( !$QueueExist ) {
+                delete( $GetParam->{$XQueueHeader} );
+            }
         }
     }
 
