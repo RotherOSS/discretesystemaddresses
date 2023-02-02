@@ -29,24 +29,6 @@ our @ObjectDependencies = (
     'Kernel::System::LinkObject',
 );
 
-=head1 NAME
-
-Kernel::System::PostMaster::AddressPool - all address pool functions
-
-=head1 DESCRIPTION
-
-Global module to find addresses in pools.
-
-=head1 PUBLIC INTERFACE
-
-=head2 new()
-
-create an object
-
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
-
-=cut
-
 sub new {
     my ( $Type, %Param ) = @_;
 
@@ -54,12 +36,193 @@ sub new {
     my $Self = {};
     bless( $Self, $Type );
 
+    # get parser object
+    $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
+
+    # Get communication log object.
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+
     return $Self;
+}
+
+=head2 BuildMailAddressList()
+
+Build mail address list of To, Cc, Bcc ... as array or hash with queue
+
+    my @MailAddressList = $AddressPoolObject->BuildMailAddressList(
+        Params            => $GetParam,
+    );
+
+    my %MailAddressList = $AddressPoolObject->BuildMailAddressList(
+        Params            => $GetParam,
+        AddressPoolFilter => 1,         # (optional)
+    );
+
+Return:
+
+    @MailAddressList = (
+              'test1@example.com',
+              'test2@example.com',
+              'test3@example.com',
+              ...
+            )
+
+    %MailAddressList = (
+              'test1@example.com' => 'Misc',
+              'test2@example.com' => 'Junk',
+              'test3@example.com' => 'Raw',
+              ...
+            )
+
+=cut
+
+sub BuildMailAddressList {
+    my ( $Self, %Param ) = @_;
+
+    # check needed stuff
+    if ( !$Param{Params} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need Params!",
+        );
+        return;
+    }
+
+    if ( !IsHashRefWithData( $Param{Params} ) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need Params as hash ref!",
+        );
+        return;
+    }
+
+    my $AddressListString;
+
+    # get object
+    my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
+
+    # get headers
+    my %GetParam = $Param{Params}->%*;
+
+    # check possible address headers
+    my %AddressUsed;
+    my @AddressList;
+    HEADER:
+    for my $Header (qw(Resent-To Envelope-To To Cc Delivered-To X-Original-To)) {
+
+        next HEADER if !$GetParam{$Header};
+
+        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
+        EMAIL:
+        for my $Email (@Emails) {
+
+            next EMAIL if !$Email;
+
+            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+
+            next EMAIL if !$Address;
+
+            if ( !$AddressUsed{$Address} ) {
+                push( @AddressList, $Address );
+                $AddressUsed{$Address} = 1;
+            }
+
+        }
+    }
+
+    if ( $Param{AddressPoolFilter} ) {
+
+        my %FilteredAddressList;
+        my %AddressPoolNameList = $Self->NameList(
+            QueueDefault => 1,
+        );
+        if (%AddressPoolNameList) {
+
+            my %Queues = $QueueObject->QueueList(
+                Valid => 1,
+            );
+
+            POOLNAME:
+            for my $PoolName ( keys %AddressPoolNameList ) {
+
+                my $QueueExist;
+                my $MailAddress;
+
+                # get the first found address with valid queue
+                ADDRESS:
+                for my $Address (@AddressList) {
+
+                    POOLADDRESS:
+                    for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
+
+                        if ( $Address eq $PoolAddress ) {
+
+                            $MailAddress = $Address;
+
+                            last POOLADDRESS;
+                        }
+                    }
+
+                    if ($MailAddress) {
+
+                        QUEUEID:
+                        for my $QueueID ( keys %Queues ) {
+
+                            my %QueueData = $QueueObject->QueueGet(
+                                ID => $QueueID,
+                            );
+
+                            if ( $MailAddress eq $QueueData{Email} ) {
+
+                                $QueueExist = $QueueData{Name};
+
+                                last QUEUEID;
+                            }
+                        }
+
+                        last ADDRESS;
+                    }
+                }
+
+                # Get queue default from config
+                if ( !$QueueExist ) {
+
+                    my $QueueDefault = $AddressPoolNameList{$PoolName}{QueueDefault};
+                    if ( !$MailAddress || !$QueueDefault ) {
+                        next POOLNAME;
+                    }
+                    $QueueExist = $QueueDefault;
+                }
+
+                $FilteredAddressList{$MailAddress} = $QueueExist;
+            }
+        }
+
+        $AddressListString = join( ", ", keys %FilteredAddressList );
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Get filtered mail list by address pools ($AddressListString)!",
+        );
+
+        return %FilteredAddressList;
+    }
+
+    $AddressListString = join( ", ", @AddressList );
+    $Self->{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => ref($Self),
+        Value         => "Get mail list ($AddressListString)!",
+    );
+
+    return @AddressList;
 }
 
 =head2 NameList()
 
-Get Addresses of every pools
+Get addresses of every pools
 
     my %NameList = $AddressPoolObject->NameList();
 
@@ -131,6 +294,13 @@ sub NameList {
         }
     }
 
+    $Self->{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => ref($Self),
+        Value         => "Get address pool list from config!",
+    );
+
     return %NameList;
 }
 
@@ -180,6 +350,13 @@ sub NameLookup {
         # set address pool name
         $PoolName = $NameList{ $Param{Address} };
 
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Get address pool ($PoolName) from address ($Param{Address})!",
+        );
+
         return $PoolName;
     }
 
@@ -196,6 +373,13 @@ sub NameLookup {
     if ( $QueueData{Email} ) {
         $PoolName = $NameList{ $QueueData{Email} };
     }
+
+    $Self->{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => ref($Self),
+        Value         => "Get address pool ($PoolName) from queue ($QueueData{Name})!",
+    );
 
     return $PoolName;
 }
@@ -249,10 +433,27 @@ sub QueueCheck {
         $QueuePool = $NameList{ $QueueData{Email} };
     }
 
+    my $Message = "For queue ($Param{Queue}) in AddressPool ($Param{AddressPool})!";
+
     # check is queue in given address pool
     if ( !$QueuePool || $QueuePool ne $Param{AddressPool} ) {
+
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Not matched: " . $Message,
+        );
+
         return;
     }
+
+    $Self->{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => ref($Self),
+        Value         => "Matched: " . $Message,
+    );
 
     return 1;
 }
@@ -316,9 +517,25 @@ sub FindLinkedTicket {
             )
         {
 
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => ref($Self),
+                Value         => "Interdivisional link (Number: $LTTicketNumber / ID: $LTTicketID) found
+                                    for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
+            );
+
             return ( $LTTicketNumber, $LTTicketID );
         }
     }
+
+    $Self->{CommunicationLogObject}->ObjectLog(
+        ObjectLogType => 'Message',
+        Priority      => 'Debug',
+        Key           => ref($Self),
+        Value         => "Interdivisional link not found
+                            for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
+    );
 
     return;
 }
@@ -383,10 +600,23 @@ sub InterdivisionalTicketLinkAdd {
                 UserID       => $Param{UserID},
             );
 
+            my $Message = "Created an interdivisional link from ticket (ID: $TicketIDs[$Source]) to ticket (ID: $TicketIDs[$Target])!";
             if ( !$Success ) {
-                $Kernel::OM->Get('Kernel::System::Log')->Log(
-                    Priority => 'error',
-                    Message  => "Can't create an interdivisional link from ticket (ID: $TicketIDs[$Source]) to ticket (ID: $TicketIDs[$Target])",
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Error',
+                    Key           => ref($Self),
+                    Value         => "Error: " . $Message,
+                );
+            }
+            else {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "Success: " . $Message,
                 );
             }
         }

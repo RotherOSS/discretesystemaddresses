@@ -19,18 +19,17 @@ package Kernel::System::PostMaster::DestQueue;
 use strict;
 use warnings;
 
+# Rother OSS / DiscreteSystemAddresses
+
+use Kernel::System::PostMaster::AddressPool;
+
+# EO DiscreteSystemAddresses
+
 our @ObjectDependencies = (
     'Kernel::Config',
     'Kernel::System::Log',
     'Kernel::System::Queue',
     'Kernel::System::SystemAddress',
-
-# Rother OSS / DiscreteSystemAddresses
-
-    'Kernel::System::PostMaster::AddressPool',
-
-# EO DiscreteSystemAddresses
-
 );
 
 sub new {
@@ -45,6 +44,13 @@ sub new {
 
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+
+# Rother OSS / DiscreteSystemAddresses
+
+    # Get address pool object
+    $Self->{AddressPoolObject} = Kernel::System::PostMaster::AddressPool->new( $Self->%* );
+
+# EO DiscreteSystemAddresses
 
     return $Self;
 }
@@ -78,11 +84,8 @@ sub GetQueueID {
     my $AddressPoolQueue;
     if ( $GetParam{AddressPool} ) {
 
-        # get address pool object
-        my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
-
         # get address pool data
-        my %AddressPoolList = $AddressPoolObject->NameList(
+        my %AddressPoolList = $Self->{AddressPoolObject}->NameList(
             QueueDefault => 1,
         );
         my $AddressPoolData = $AddressPoolList{ $GetParam{AddressPool} };

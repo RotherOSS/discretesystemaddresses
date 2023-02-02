@@ -25,6 +25,12 @@ use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
 
+# Rother OSS / DiscreteSystemAddresses
+
+use Kernel::System::PostMaster::AddressPool;
+
+# EO DiscreteSystemAddresses
+
 use Kernel::System::VariableCheck qw(IsHashRefWithData);
 
 our %ObjectManagerFlags = (
@@ -43,7 +49,6 @@ our @ObjectDependencies = (
 
     'Kernel::System::Log',
     'Kernel::System::LinkObject',
-    'Kernel::System::PostMaster::AddressPool',
 
 # EO DiscreteSystemAddresses
 
@@ -190,8 +195,7 @@ sub Run {
 
 # Rother OSS / DiscreteSystemAddresses
 
-    my $LinkObject        = $Kernel::OM->Get('Kernel::System::LinkObject');
-    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
+    my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
@@ -266,7 +270,7 @@ sub Run {
 # Rother OSS / DiscreteSystemAddresses
 
         # build mail address list
-        my %MailAddressList = $Self->BuildMailAddressList(
+        my %MailAddressList = $Self->{AddressPoolObject}->BuildMailAddressList(
             Params            => $GetParam,
             AddressPoolFilter => 1,
         );
@@ -275,12 +279,12 @@ sub Run {
         if (%MailAddressList) {
 
             # lookup address per pool name
-            my %AddressPoolNameList = $AddressPoolObject->NameList();
+            my %AddressPoolNameList = $Self->{AddressPoolObject}->NameList();
 
             if ($TicketID) {
 
                 # set first address pool for follow up
-                $Param{AddressPool} = $AddressPoolObject->NameLookup(
+                $Param{AddressPool} = $Self->{AddressPoolObject}->NameLookup(
                     TicketID => $TicketID,
                 );
             }
@@ -326,7 +330,7 @@ sub Run {
 
         ( $Tn, $TicketID ) = ();
         if ( $Param{FollowUpTicketID} ) {
-            ( $Tn, $TicketID ) = $AddressPoolObject->FindLinkedTicket(
+            ( $Tn, $TicketID ) = $Self->{AddressPoolObject}->FindLinkedTicket(
                 TicketID    => $Param{FollowUpTicketID},
                 AddressPool => $Param{AddressPool},
                 UserID      => $Self->{PostmasterUserID},
@@ -343,7 +347,7 @@ sub Run {
 
             next XQUEUEHEADER if !$GetParam->{$XQueueHeader};
 
-            my $QueueExist = $AddressPoolObject->QueueCheck(
+            my $QueueExist = $Self->{AddressPoolObject}->QueueCheck(
                 Queue       => $GetParam->{$XQueueHeader},
                 AddressPool => $GetParam->{AddressPool},
             );
@@ -639,7 +643,7 @@ sub Run {
         my %TicketIDUsed;
         @TicketIDsToLink = map { $TicketIDUsed{$_}++ == 0 ? $_ : () } @TicketIDsToLink, keys %LinkedTickets;
 
-        $AddressPoolObject->InterdivisionalTicketLinkAdd(
+        $Self->{AddressPoolObject}->InterdivisionalTicketLinkAdd(
             TicketIDs => \@TicketIDsToLink,
             UserID    => $Self->{PostmasterUserID},
         );
@@ -919,169 +923,9 @@ sub RecursivePostMasterRun {
     return $TicketID;
 }
 
-=head2 BuildMailAddressList()
-
-Build mail address list of To, Cc, Bcc ... as array or hash with queue
-
-    my @MailAddressList = $PostMasterObject->BuildMailAddressList(
-        Params            => $GetParam,
-    );
-
-    my %MailAddressList = $PostMasterObject->BuildMailAddressList(
-        Params            => $GetParam,
-        AddressPoolFilter => 1,         # (optional)
-    );
-
-Return:
-
-    @MailAddressList = (
-              'test1@example.com',
-              'test2@example.com',
-              'test3@example.com',
-              ...
-            )
-
-    %MailAddressList = (
-              'test1@example.com' => 'Misc',
-              'test2@example.com' => 'Junk',
-              'test3@example.com' => 'Raw',
-              ...
-            )
-
-=cut
-
-sub BuildMailAddressList {
-    my ( $Self, %Param ) = @_;
-
-    # check needed stuff
-    if ( !$Param{Params} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need Params!",
-        );
-        return;
-    }
-
-    if ( !IsHashRefWithData( $Param{Params} ) ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need Params as hash ref!",
-        );
-        return;
-    }
-
-    # get object
-    my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
-
-    # get headers
-    my %GetParam = $Param{Params}->%*;
-
-    # check possible address headers
-    my %AddressUsed;
-    my @AddressList;
-    HEADER:
-    for my $Header (qw(Resent-To Envelope-To To Cc Delivered-To X-Original-To)) {
-
-        next HEADER if !$GetParam{$Header};
-
-        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
-        EMAIL:
-        for my $Email (@Emails) {
-
-            next EMAIL if !$Email;
-
-            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
-
-            next EMAIL if !$Address;
-
-            if ( !$AddressUsed{$Address} ) {
-                push( @AddressList, $Address );
-                $AddressUsed{$Address} = 1;
-            }
-
-        }
-    }
-
-    if ( $Param{AddressPoolFilter} ) {
-
-        # get object
-        my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
-
-        my %FilteredAddressList;
-        my %AddressPoolNameList = $AddressPoolObject->NameList(
-            QueueDefault => 1,
-        );
-        if (%AddressPoolNameList) {
-
-            my %Queues = $QueueObject->QueueList(
-                Valid => 1,
-            );
-
-            POOLNAME:
-            for my $PoolName ( keys %AddressPoolNameList ) {
-
-                my $QueueExist;
-                my $MailAddress;
-
-                # get the first found address with valid queue
-                ADDRESS:
-                for my $Address (@AddressList) {
-
-                    POOLADDRESS:
-                    for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
-
-                        if ( $Address eq $PoolAddress ) {
-
-                            $MailAddress = $Address;
-
-                            last POOLADDRESS;
-                        }
-                    }
-
-                    if ($MailAddress) {
-
-                        QUEUEID:
-                        for my $QueueID ( keys %Queues ) {
-
-                            my %QueueData = $QueueObject->QueueGet(
-                                ID => $QueueID,
-                            );
-
-                            if ( $MailAddress eq $QueueData{Email} ) {
-
-                                $QueueExist = $QueueData{Name};
-
-                                last QUEUEID;
-                            }
-                        }
-
-                        last ADDRESS;
-                    }
-                }
-
-                # Get queue default from config
-                if ( !$QueueExist ) {
-
-                    my $QueueDefault = $AddressPoolNameList{$PoolName}{QueueDefault};
-                    if ( !$MailAddress || !$QueueDefault ) {
-                        next POOLNAME;
-                    }
-                    $QueueExist = $QueueDefault;
-                }
-
-                $FilteredAddressList{$MailAddress} = $QueueExist;
-            }
-        }
-
-        return %FilteredAddressList;
-    }
-
-    return @AddressList;
-}
-
 =head2 _CreateMailObjects()
 
-Create new mail objects (DestQueue, NewTicket, FollowUp, Reject)
+Create new mail objects (DestQueue, NewTicket, FollowUp, Reject, AddressPool)
 
     $PostMasterObject->_CreateMailObjects(
         Data => $Self,
@@ -1102,10 +946,11 @@ sub _CreateMailObjects {
     }
 
     # create mail objects
-    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( $Param{Data}->%* );
-    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( $Param{Data}->%* );
-    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( $Param{Data}->%* );
-    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( $Param{Data}->%* );
+    $Self->{DestQueueObject}   = Kernel::System::PostMaster::DestQueue->new( $Param{Data}->%* );
+    $Self->{NewTicketObject}   = Kernel::System::PostMaster::NewTicket->new( $Param{Data}->%* );
+    $Self->{FollowUpObject}    = Kernel::System::PostMaster::FollowUp->new( $Param{Data}->%* );
+    $Self->{RejectObject}      = Kernel::System::PostMaster::Reject->new( $Param{Data}->%* );
+    $Self->{AddressPoolObject} = Kernel::System::PostMaster::AddressPool->new( $Param{Data}->%* );
 
     return 1;
 }
