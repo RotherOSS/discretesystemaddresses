@@ -37,7 +37,7 @@ You have to choose one of them for example and define a pool name with their mai
 .. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
   :align: left
   :width: 500
-  :height: 500
+  :height: 300
   :alt: Screenshot showing address pool settings.
 |
 
