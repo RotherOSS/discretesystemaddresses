@@ -13,6 +13,7 @@
         <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
         <File Permission="660" Location="Custom/Kernel/System/PostMaster.pm" />
         <File Permission="660" Location="Custom/Kernel/System/SystemAddress.pm" />
+        <File Permission="660" Location="Custom/Kernel/System/PostMaster/DestQueue.pm" />
         <File Permission="660" Location="Custom/Kernel/System/Ticket/Article/Backend/Email.pm" />
         <File Permission="660" Location="Kernel/System/PostMaster/AddressPool.pm" />
         <File Permission="660" Location="Kernel/System/PostMaster/Filter/MatchMessageID.pm" />
