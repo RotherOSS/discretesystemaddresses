@@ -111,13 +111,13 @@ sub GetQueueID {
 
         # check if email exist in address pool
         my $QueueID;
-        if (%AddressPoolMails && $GetParam{MailAddressList}) {
+        if ( %AddressPoolMails && $GetParam{MailAddressList} ) {
 
             next EMAIL if !$AddressPoolMails{$Address};
 
             # lookup address pool queue id if recipiend address
             my $MailQueue = $GetParam{MailAddressList}->{$Address};
-            if ( $MailQueue ) {
+            if ($MailQueue) {
 
                 $QueueID = $Kernel::OM->Get('Kernel::System::Queue')->QueueLookup(
                     Queue => $MailQueue,
