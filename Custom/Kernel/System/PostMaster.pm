@@ -270,6 +270,7 @@ sub Run {
             Params            => $GetParam,
             AddressPoolFilter => 1,
         );
+        $GetParam->{MailAddressList} = \%MailAddressList;
 
         if (%MailAddressList) {
 
