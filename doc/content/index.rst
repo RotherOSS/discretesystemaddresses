@@ -32,7 +32,6 @@ Setup
 Go to "Admin -> System Configuration" and search for "AddressPool".
 
 You have to choose one of them for example and define a pool name with their mail addresses and default queue.
-
 |
 
 .. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
@@ -41,7 +40,6 @@ You have to choose one of them for example and define a pool name with their mai
   :alt: Screenshot showing address pool settings.
 
 |
-
 Configuration Reference
 -----------------------
 
