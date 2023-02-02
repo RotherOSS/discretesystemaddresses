@@ -76,7 +76,7 @@ sub GetQueueID {
 
     my %AddressPoolMails;
     my $AddressPoolQueue;
-    if ($GetParam{AddressPool}) {
+    if ( $GetParam{AddressPool} ) {
 
         # get address pool object
         my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');

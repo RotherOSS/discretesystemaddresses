@@ -333,7 +333,7 @@ sub Run {
         }
     }
 
-    if ($Param{AddressPool}) {
+    if ( $Param{AddressPool} ) {
 
         $GetParam->{AddressPool} = $Param{AddressPool};
 
