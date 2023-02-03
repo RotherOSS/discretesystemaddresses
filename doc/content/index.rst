@@ -7,7 +7,17 @@ Sacrifice to Sphinx
 
 Description
 ===========
-Treat addresses as separate entities, allowing to send emails from one to another, and treat incoming emails independently for each.
+With the extension, OTOBO will be able to handle e-mails through communication between different (system) addresses in address pools.
+
+To do this, incoming emails to different address pools are linked to each other and articles are then created in all of them to which an email is sent.
+
+If an incoming mail is to be assigned as a follow-up to an existing ticket, the ticket numbers (as well as other assignment functions) of all linked tickets are taken into account.
+
+The agents will be able to send emails to other (system) addresses (e.g. via Cc) from within OTOBO.
+
+If you continue to write to the same (system) address as before, a new ticket will be created in the original ticket queue and automatically linked to the moved ticket.
+
+In addition, a new filter is added that uses the message id to recognize whether this mail already exists in OTOBO and then ignores it.
 
 System requirements
 ===================
@@ -26,6 +36,15 @@ Third-party software
 
 Usage
 =====
+In the system configuration, there is an option to define which mail addresses form an address pool (e.g. helpdesk@..., it@... and support@... as (system) addresses of the IT-Management).
+
+Example:
+
+Ticket#123 in queue "IT" is linked to ticket #198 in queue "HR" and ticket #200 in queue "Students".
+
+If an email reply "Re: [Ticket#123] My Problem" is sent to the address pools "IT-Management", "HR-Management" and "Building-Management", follow-ups would be generated in ticket #123 and ticket #198.
+
+The ticket in the "Students" queue would remain unchanged and a new ticket would be created in the "Building" queue and linked to Ticket#123, Ticket#198 and Ticket#200.
 
 Setup
 -----
