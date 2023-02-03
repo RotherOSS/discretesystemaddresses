@@ -6,8 +6,8 @@
     <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://otobo.de/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
-    <Description Lang="en">Treat addresses as separate entities, allowing to send emails from one to another, and treat incoming emails independently for each.</Description>
-    <Description Lang="de">Es werden Adressen als separate Einheiten betrachtet, sodass E-Mails von einer zur anderen gesendet und eingehende E-Mails unabhängig voneinander behandelt werden können.</Description>
+    <Description Lang="en">With the extension, OTOBO will be able to handle e-mails through communication between different (system) addresses in address pools.</Description>
+    <Description Lang="de">Mit der Erweiterung wird OTOBO in der Lage sein, E-Mails durch Kommunikation zwischen verschiedenen (System-)Adressen in Adress-Bereiche zu verarbeiten.</Description>
     <Filelist>
         <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
         <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
