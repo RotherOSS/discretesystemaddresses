@@ -7,9 +7,7 @@ Sacrifice to Sphinx
 
 Description
 ===========
-With this extension it is possible that (system) addresses can communicate with each other.
-
-These are assigned to so-called address pools so that the incoming mail is divided into several tickets.
+This extension facilitates communication between system addresses within OTOBO (e.g. in cc), by linking tickets in different queues to each other and using address pools to ensure a new article is added to all relevant tickets within the system (e.g. one in the IT Queue and one in HR).
 
 System requirements
 ===================
@@ -28,21 +26,17 @@ Third-party software
 
 Usage
 =====
-The agents will be able to send emails to other (system) addresses (e.g. via Cc) from within OTOBO.
+This extension enables OTOBO to handle emails between system addresses, and makes sure that replies are added to all relevant tickets in the system.
 
-If you continue to write to the same (system) address as before, a new ticket will be created in the original ticket queue and automatically linked to the moved ticket.
-
-In addition, a new filter is added that uses the message id to recognize whether this mail already exists in OTOBO and then ignores it.
-
-In the system configuration, there is an option to define which mail addresses form an address pool (e.g. helpdesk@..., it@... and support@... as (system) addresses of the IT-Management).
+Address pools can be defined to detail which system addresses belong to one pool – and thus point to the same ticket/queue (e.g. helpdesk@..., it@... and support@... as system addresses of the IT Department).
 
 Example:
 
-Ticket#123 in queue "IT" is linked to ticket #198 in queue "HR" and ticket #200 in queue "Students".
+When an OTOBO Agent from IT writes an email to a customer and puts HR in cc, two tickets are created in the system – Ticket#123 in the queue "IT" and a linked ticket #198 in queue "HR".
 
-If an email reply "Re: [Ticket#123] My Problem" is sent to the address pools "IT-Management", "HR-Management" and "Building-Management", follow-ups would be generated in ticket #123 and ticket #198.
+If an email reply "Re: [Ticket#123] My Problem" is now sent from an "HR" address to addresses in the address pools "IT-Management" and "Building-Management", follow-ups are generated in ticket #123 and #198.
 
-The ticket in the "Students" queue would remain unchanged and a new ticket would be created in the "Building" queue and linked to Ticket#123, Ticket#198 and Ticket#200.
+Moreover, a new ticket is created in the "Building" queue, which is linked to Ticket#123 and Ticket#198.
 
 Setup
 -----
@@ -59,6 +53,13 @@ You have to choose one of them for example and define a pool name with their mai
 
 Configuration Reference
 -----------------------
+
+Core::Email::PostMaster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PostMaster::PreFilterModule###000-MatchMessageID
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Module to check if mail with message id already exist.
 
 Core::Email::PostMaster::AddressPool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

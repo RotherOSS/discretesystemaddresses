@@ -6,8 +6,8 @@
     <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://otobo.de/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
-    <Description Lang="en">With the extension, OTOBO will be able to handle e-mails through communication between different (system) addresses in address pools.</Description>
-    <Description Lang="de">Mit der Erweiterung wird OTOBO in der Lage sein, E-Mails durch Kommunikation zwischen verschiedenen (System-)Adressen in Adress-Bereiche zu verarbeiten.</Description>
+    <Description Lang="en">This extension facilitates communication between system addresses within OTOBO (e.g. in cc), by linking tickets in different queues to each other and using address pools to ensure a new article is added to all relevant tickets within the system (e.g. one in the IT Queue and one in HR).</Description>
+    <Description Lang="de">Diese Erweiterung erleichtert die Kommunikation zwischen Systemadressen innerhalb von OTOBO (z. B. in cc), indem sie Tickets in verschiedenen Queues miteinander verknüpft und Adress-Bereiche verwendet, um sicherzustellen, dass ein neuer Artikel zu allen relevanten Tickets innerhalb des Systems hinzugefügt wird (z. B. eines in der IT-Queue und eine in der Personalabteilung).</Description>
     <Filelist>
         <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
         <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
