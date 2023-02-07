@@ -37,10 +37,10 @@ sub new {
     bless( $Self, $Type );
 
     # get parser object
-    $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
+    $Self->{ParserObject} = $Param{ParserObject} || '';
 
     # Get communication log object.
-    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
+    $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || '';
 
     return $Self;
 }
@@ -80,6 +80,14 @@ sub BuildMailAddressList {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
+    if ( !$Self->{ParserObject} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "Need ParserObject!",
+        );
+        return;
+    }
+
     if ( !$Param{Params} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
@@ -198,24 +206,30 @@ sub BuildMailAddressList {
             }
         }
 
-        $AddressListString = join( ", ", keys %FilteredAddressList );
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Debug',
-            Key           => ref($Self),
-            Value         => "Get filtered mail list by address pools ($AddressListString)!",
-        );
+        if ( $Self->{CommunicationLogObject} ) {
+
+            $AddressListString = join( ", ", keys %FilteredAddressList );
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => ref($Self),
+                Value         => "Get filtered mail list by address pools ($AddressListString)!",
+            );
+        }
 
         return %FilteredAddressList;
     }
 
-    $AddressListString = join( ", ", @AddressList );
-    $Self->{CommunicationLogObject}->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => ref($Self),
-        Value         => "Get mail list ($AddressListString)!",
-    );
+    if ( $Self->{CommunicationLogObject} ) {
+
+        $AddressListString = join( ", ", @AddressList );
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Get mail list ($AddressListString)!",
+        );
+    }
 
     return @AddressList;
 }
@@ -294,12 +308,15 @@ sub NameList {
         }
     }
 
-    $Self->{CommunicationLogObject}->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => ref($Self),
-        Value         => "Get address pool list from config!",
-    );
+    if ( $Self->{CommunicationLogObject} ) {
+
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Get address pool list from config!",
+        );
+    }
 
     return %NameList;
 }
@@ -350,12 +367,15 @@ sub NameLookup {
         # set address pool name
         $PoolName = $NameList{ $Param{Address} };
 
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Debug',
-            Key           => ref($Self),
-            Value         => "Get address pool ($PoolName) from address ($Param{Address})!",
-        );
+        if ( $Self->{CommunicationLogObject} ) {
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => ref($Self),
+                Value         => "Get address pool ($PoolName) from address ($Param{Address})!",
+            );
+        }
 
         return $PoolName;
     }
@@ -374,12 +394,15 @@ sub NameLookup {
         $PoolName = $NameList{ $QueueData{Email} };
     }
 
-    $Self->{CommunicationLogObject}->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => ref($Self),
-        Value         => "Get address pool ($PoolName) from queue ($QueueData{Name})!",
-    );
+    if ( $Self->{CommunicationLogObject} ) {
+
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Get address pool ($PoolName) from queue ($QueueData{Name})!",
+        );
+    }
 
     return $PoolName;
 }
@@ -438,22 +461,28 @@ sub QueueCheck {
     # check is queue in given address pool
     if ( !$QueuePool || $QueuePool ne $Param{AddressPool} ) {
 
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Debug',
-            Key           => ref($Self),
-            Value         => "Not matched: " . $Message,
-        );
+        if ( $Self->{CommunicationLogObject} ) {
+
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => ref($Self),
+                Value         => "Not matched: " . $Message,
+            );
+        }
 
         return;
     }
 
-    $Self->{CommunicationLogObject}->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => ref($Self),
-        Value         => "Matched: " . $Message,
-    );
+    if ( $Self->{CommunicationLogObject} ) {
+
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Matched: " . $Message,
+        );
+    }
 
     return 1;
 }
@@ -517,25 +546,31 @@ sub FindLinkedTicket {
             )
         {
 
-            $Self->{CommunicationLogObject}->ObjectLog(
-                ObjectLogType => 'Message',
-                Priority      => 'Debug',
-                Key           => ref($Self),
-                Value         => "Interdivisional link (Number: $LTTicketNumber / ID: $LTTicketID) found
-                                    for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
-            );
+            if ( $Self->{CommunicationLogObject} ) {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "Interdivisional link (Number: $LTTicketNumber / ID: $LTTicketID) found
+                                        for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
+                );
+            }
 
             return ( $LTTicketNumber, $LTTicketID );
         }
     }
 
-    $Self->{CommunicationLogObject}->ObjectLog(
-        ObjectLogType => 'Message',
-        Priority      => 'Debug',
-        Key           => ref($Self),
-        Value         => "Interdivisional link not found
-                            for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
-    );
+    if ( $Self->{CommunicationLogObject} ) {
+
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => ref($Self),
+            Value         => "Interdivisional link not found
+                                for ticket (ID: $Param{TicketID} / AddressPool: $Param{AddressPool})!",
+        );
+    }
 
     return;
 }
@@ -600,24 +635,27 @@ sub InterdivisionalTicketLinkAdd {
                 UserID       => $Param{UserID},
             );
 
-            my $Message = "Created an interdivisional link from ticket (ID: $TicketIDs[$Source]) to ticket (ID: $TicketIDs[$Target])!";
-            if ( !$Success ) {
+            if ( $Self->{CommunicationLogObject} ) {
 
-                $Self->{CommunicationLogObject}->ObjectLog(
-                    ObjectLogType => 'Message',
-                    Priority      => 'Error',
-                    Key           => ref($Self),
-                    Value         => "Error: " . $Message,
-                );
-            }
-            else {
+                my $Message = "Created an interdivisional link from ticket (ID: $TicketIDs[$Source]) to ticket (ID: $TicketIDs[$Target])!";
+                if ( !$Success ) {
 
-                $Self->{CommunicationLogObject}->ObjectLog(
-                    ObjectLogType => 'Message',
-                    Priority      => 'Debug',
-                    Key           => ref($Self),
-                    Value         => "Success: " . $Message,
-                );
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Error',
+                        Key           => ref($Self),
+                        Value         => "Error: " . $Message,
+                    );
+                }
+                else {
+
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Debug',
+                        Key           => ref($Self),
+                        Value         => "Success: " . $Message,
+                    );
+                }
             }
         }
     }
