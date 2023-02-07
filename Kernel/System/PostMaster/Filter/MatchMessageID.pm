@@ -68,7 +68,7 @@ sub Run {
 
         $Self->_AddCommunicationLog(
             Message => sprintf(
-                'Article with message id "%s" already exist, ignore it.',
+                'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
                 $MessageID,
             ),
         );
