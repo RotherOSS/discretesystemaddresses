@@ -47,30 +47,18 @@ sub new {
 
 =head2 BuildMailAddressList()
 
-Build mail address list of To, Cc, Bcc ... as array or hash with queue
-
-    my @MailAddressList = $AddressPoolObject->BuildMailAddressList(
-        Params            => $GetParam,
-    );
+Build mail address list of To, Cc ...
 
     my %MailAddressList = $AddressPoolObject->BuildMailAddressList(
-        Params            => $GetParam,
-        AddressPoolFilter => 1,         # (optional)
+        Params => $GetParam,
     );
 
 Return:
 
-    @MailAddressList = (
-              'test1@example.com',
-              'test2@example.com',
-              'test3@example.com',
-              ...
-            )
-
     %MailAddressList = (
-              'test1@example.com' => 'Misc',
-              'test2@example.com' => 'Junk',
-              'test3@example.com' => 'Raw',
+              'test1@example.com' => 'Pool1',
+              'test2@example.com' => 'Pool2',
+              'test3@example.com' => 'Pool3',
               ...
             )
 
@@ -106,15 +94,15 @@ sub BuildMailAddressList {
 
     my $AddressListString;
 
-    # get object
-    my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
-
     # get headers
     my %GetParam = $Param{Params}->%*;
 
+    # get mail <-> address pool
+    my %AddressPoolList = $Self->NameList();
+
     # check possible address headers
-    my %AddressUsed;
-    my @AddressList;
+    my %PoolUsed;
+    my %AddressList;
     HEADER:
     for my $Header (qw(Resent-To Envelope-To To Cc Delivered-To X-Original-To)) {
 
@@ -130,85 +118,24 @@ sub BuildMailAddressList {
 
             next EMAIL if !$Address;
 
-            if ( !$AddressUsed{$Address} ) {
-                push( @AddressList, $Address );
-                $AddressUsed{$Address} = 1;
-            }
+            my $AddressPool = $AddressPoolList{$Address};
 
+            next EMAIL if !$AddressPool;
+
+            if ( !$PoolUsed{$AddressPool} ) {
+
+                $PoolUsed{$AddressPool} = 1;
+                $AddressList{$Address}  = $AddressPool;
+            }
         }
     }
 
-    if ( $Param{AddressPoolFilter} ) {
+    if ( $Self->{CommunicationLogObject} ) {
 
-        my %FilteredAddressList;
-        my %AddressPoolNameList = $Self->NameList(
-            QueueDefault => 1,
-        );
-        if (%AddressPoolNameList) {
+        $AddressListString = join( ", ", keys %AddressList );
 
-            my %Queues = $QueueObject->QueueList(
-                Valid => 1,
-            );
+        if ($AddressListString) {
 
-            POOLNAME:
-            for my $PoolName ( keys %AddressPoolNameList ) {
-
-                my $QueueExist;
-                my $MailAddress;
-
-                # get the first found address with valid queue
-                ADDRESS:
-                for my $Address (@AddressList) {
-
-                    POOLADDRESS:
-                    for my $PoolAddress ( $AddressPoolNameList{$PoolName}{Emails}->@* ) {
-
-                        if ( $Address eq $PoolAddress ) {
-
-                            $MailAddress = $Address;
-
-                            last POOLADDRESS;
-                        }
-                    }
-
-                    if ($MailAddress) {
-
-                        QUEUEID:
-                        for my $QueueID ( keys %Queues ) {
-
-                            my %QueueData = $QueueObject->QueueGet(
-                                ID => $QueueID,
-                            );
-
-                            if ( $MailAddress eq $QueueData{Email} ) {
-
-                                $QueueExist = $QueueData{Name};
-
-                                last QUEUEID;
-                            }
-                        }
-
-                        last ADDRESS;
-                    }
-                }
-
-                # Get queue default from config
-                if ( !$QueueExist ) {
-
-                    my $QueueDefault = $AddressPoolNameList{$PoolName}{QueueDefault};
-                    if ( !$MailAddress || !$QueueDefault ) {
-                        next POOLNAME;
-                    }
-                    $QueueExist = $QueueDefault;
-                }
-
-                $FilteredAddressList{$MailAddress} = $QueueExist;
-            }
-        }
-
-        if ( $Self->{CommunicationLogObject} ) {
-
-            $AddressListString = join( ", ", keys %FilteredAddressList );
             $Self->{CommunicationLogObject}->ObjectLog(
                 ObjectLogType => 'Message',
                 Priority      => 'Debug',
@@ -216,22 +143,18 @@ sub BuildMailAddressList {
                 Value         => "Get filtered mail list by address pools ($AddressListString)!",
             );
         }
+        else {
 
-        return %FilteredAddressList;
+            $Self->{CommunicationLogObject}->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Debug',
+                Key           => ref($Self),
+                Value         => "No address pools found to filter mail list!",
+            );
+        }
     }
 
-    if ( $Self->{CommunicationLogObject} ) {
-
-        $AddressListString = join( ", ", @AddressList );
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Debug',
-            Key           => ref($Self),
-            Value         => "Get mail list ($AddressListString)!",
-        );
-    }
-
-    return @AddressList;
+    return %AddressList;
 }
 
 =head2 NameList()
@@ -369,12 +292,24 @@ sub NameLookup {
 
         if ( $Self->{CommunicationLogObject} ) {
 
-            $Self->{CommunicationLogObject}->ObjectLog(
-                ObjectLogType => 'Message',
-                Priority      => 'Debug',
-                Key           => ref($Self),
-                Value         => "Get address pool ($PoolName) from address ($Param{Address})!",
-            );
+            if ($PoolName) {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "Get address pool ($PoolName) from address ($Param{Address})!",
+                );
+            }
+            else {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "No address pool found for address ($Param{Address})!",
+                );
+            }
         }
 
         return $PoolName;
@@ -391,17 +326,30 @@ sub NameLookup {
     );
 
     if ( $QueueData{Email} ) {
+
         $PoolName = $NameList{ $QueueData{Email} };
-    }
 
-    if ( $Self->{CommunicationLogObject} ) {
+        if ( $Self->{CommunicationLogObject} ) {
 
-        $Self->{CommunicationLogObject}->ObjectLog(
-            ObjectLogType => 'Message',
-            Priority      => 'Debug',
-            Key           => ref($Self),
-            Value         => "Get address pool ($PoolName) from queue ($QueueData{Name})!",
-        );
+            if ($PoolName) {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "Get address pool ($PoolName) from queue ($QueueData{Name})!",
+                );
+            }
+            else {
+
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Debug',
+                    Key           => ref($Self),
+                    Value         => "No address pool found for queue ($QueueData{Name})!",
+                );
+            }
+        }
     }
 
     return $PoolName;

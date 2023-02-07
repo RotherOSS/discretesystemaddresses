@@ -113,29 +113,16 @@ sub GetQueueID {
 # Rother OSS / DiscreteSystemAddresses
 
         # check if email exist in address pool
-        my $QueueID;
-        if ( %AddressPoolMails && $GetParam{MailAddressList} ) {
-
+        if ( %AddressPoolMails ) {
             next EMAIL if !$AddressPoolMails{$Address};
-
-            # lookup address pool queue id if recipiend address
-            my $MailQueue = $GetParam{MailAddressList}->{$Address};
-            if ($MailQueue) {
-
-                $QueueID = $Kernel::OM->Get('Kernel::System::Queue')->QueueLookup(
-                    Queue => $MailQueue,
-                );
-            }
-        }
-        else {
-
-            # lookup queue id if recipiend address
-            $QueueID = $SystemAddressObject->SystemAddressQueueID(
-                Address => $Address,
-            );
         }
 
 # EO DiscreteSystemAddresses
+
+        # lookup queue id if recipiend address
+        my $QueueID = $SystemAddressObject->SystemAddressQueueID(
+            Address => $Address,
+        );
 
         if ($QueueID) {
             $Self->{CommunicationLogObject}->ObjectLog(

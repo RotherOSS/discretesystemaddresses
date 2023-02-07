@@ -271,15 +271,10 @@ sub Run {
 
         # build mail address list
         my %MailAddressList = $Self->{AddressPoolObject}->BuildMailAddressList(
-            Params            => $GetParam,
-            AddressPoolFilter => 1,
+            Params => $GetParam,
         );
-        $GetParam->{MailAddressList} = \%MailAddressList;
 
         if (%MailAddressList) {
-
-            # lookup address per pool name
-            my %AddressPoolNameList = $Self->{AddressPoolObject}->NameList();
 
             if ($TicketID) {
 
@@ -291,15 +286,15 @@ sub Run {
             else {
 
                 # set first address pool for new
-                my $FirstAddress = ( sort keys %MailAddressList )[0];
-                $Param{AddressPool} = $AddressPoolNameList{$FirstAddress};
+                my $FirstAddress    = ( sort keys %MailAddressList )[0];
+                $Param{AddressPool} = $MailAddressList{$FirstAddress};
             }
 
             ADDRESS:
             for my $Address ( keys %MailAddressList ) {
 
                 # get address pool
-                my $AddressPool = $AddressPoolNameList{$Address};
+                my $AddressPool = $MailAddressList{$Address};
 
                 if (
                     $Param{AddressPool}
