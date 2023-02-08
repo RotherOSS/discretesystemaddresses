@@ -63,61 +63,116 @@ AddressPool Test
 
 EOF
 
-    # add system addresses
-    my @SystemAddresses;
+# add system addresses
+my @SystemAddresses;
 my @SystemAddressIDs;
-for ( 0 .. 2 ) {
+for my $Index ( 1 .. 5 ) {
 
-    my $SARandomID      = $Helper->GetRandomID();
-    my $SAName          = $SARandomID . '@example.com';
-    my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
-        Name     => $SAName,
-        Realname => 'SystemAddress' . $SARandomID,
-        ValidID  => 1,
-        QueueID  => 1,
-        UserID   => 1,
-    );
+    my $SARandomID = $Helper->GetRandomID();
+    my $SAName     = $SARandomID . '@example.com';
+    if ( $Index < 4 ) {
+
+        my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
+            Name     => $SAName,
+            Realname => 'SystemAddress' . $SARandomID,
+            ValidID  => 1,
+            QueueID  => 1,
+            UserID   => 1,
+        );
+        push( @SystemAddressIDs, $SystemAddressID );
+    }
+
     push( @SystemAddresses,  $SAName );
-    push( @SystemAddressIDs, $SystemAddressID );
 }
 
 # add queues
 my @QueueIDs;
-my $QueueDefault;
-for my $Index ( 0 .. 2 ) {
+my @DefaultQueues;
+my %SystemAddressList = $SystemAddressObject->SystemAddressList();
+%SystemAddressList    = reverse %SystemAddressList;
+for my $SystemAddress ( @SystemAddresses ) {
 
-    my $QName   = 'Queue' . $Helper->GetRandomID();
+    my $QName           = 'Queue' . $Helper->GetRandomID();
+    my $SystemAddressID = $SystemAddressList{$SystemAddress};
+    if ( !$SystemAddressID ) {
+        $SystemAddressID = 1;
+    }
+
     my $QueueID = $QueueObject->QueueAdd(
         Name            => $QName,
         ValidID         => 1,
         GroupID         => 1,
-        SystemAddressID => $SystemAddressIDs[$Index],
+        SystemAddressID => $SystemAddressID,
         SalutationID    => 1,
         SignatureID     => 1,
         UserID          => 1,
     );
-    $QueueDefault = $QName;
+    push( @DefaultQueues, $QName );
     push( @QueueIDs, $QueueID );
+}
+
+# update system addresses to queue
+for my $QueueID ( @QueueIDs ) {
+
+    my %QueueData = $QueueObject->QueueGet(
+        ID    => $QueueID,
+    );
+
+    my %SystemAddressData = $SystemAddressObject->SystemAddressGet(
+        ID => $QueueData{SystemAddressID},
+    );
+
+    if ( %SystemAddressData ) {
+
+        $SystemAddressData{QueueID} = $QueueID;
+
+        $SystemAddressObject->SystemAddressUpdate(
+            %SystemAddressData,
+            UserID   => 1,
+        );
+    }
 }
 
 # set address pools
 if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
 
-    my %AddressPool;
-    for my $Index ( 1 .. 3 ) {
+    my %AddressPoolData = (
+        1 => {
+            Emails => [
+                $SystemAddresses[0],
+                $SystemAddresses[3],
+            ],
+            QueueDefault => $DefaultQueues[3],
+        },
+        2 => {
+            Emails => [
+                $SystemAddresses[1],
+            ],
+            QueueDefault => $DefaultQueues[4],
+        },
+        3 => {
+            Emails => [
+                $SystemAddresses[2],
+            ],
+            QueueDefault => $DefaultQueues[2],
+        },
+    );
+
+    my %AddressPools;
+    for my $Count ( keys %AddressPoolData ) {
 
         my $APName = 'AddressPool' . $Helper->GetRandomID();
         my %Data   = %{ $ConfigObject->Get('PostMaster::AddressPool') };
-        $AddressPool{ 'Custom0' . $Index }               = $Data{ 'Custom0' . $Index };
-        $AddressPool{ 'Custom0' . $Index }{Name}         = $APName;
-        $AddressPool{ 'Custom0' . $Index }{QueueDefault} = $QueueDefault;
-        $AddressPool{ 'Custom0' . $Index }{Emails}       = [ $SystemAddresses[ $Index - 1 ] ];
+        $AddressPools{ 'Custom0' . $Count }               = $Data{ 'Custom0' . $Count };
+        $AddressPools{ 'Custom0' . $Count }{Name}         = $APName;
+        $AddressPools{ 'Custom0' . $Count }{Emails}       = $AddressPoolData{$Count}{Emails};
+        $AddressPools{ 'Custom0' . $Count }{QueueDefault} = $AddressPoolData{$Count}{QueueDefault};
     }
 
     $Helper->ConfigSettingChange(
         Valid => 1,
         Key   => 'PostMaster::AddressPool',
-        Value => \%AddressPool,
+        Value => \%AddressPools,
     );
 }
 
