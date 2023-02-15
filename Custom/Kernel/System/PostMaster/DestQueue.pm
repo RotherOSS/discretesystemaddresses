@@ -45,13 +45,6 @@ sub new {
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
-# Rother OSS / DiscreteSystemAddresses
-
-    # Get address pool object
-    $Self->{AddressPoolObject} = Kernel::System::PostMaster::AddressPool->new( $Self->%* );
-
-# EO DiscreteSystemAddresses
-
     return $Self;
 }
 
@@ -79,22 +72,7 @@ sub GetQueueID {
     my $SystemAddressObject = $Kernel::OM->Get('Kernel::System::SystemAddress');
 
 # Rother OSS / DiscreteSystemAddresses
-
-    my %AddressPoolMails;
-    my $AddressPoolQueue;
-    if ( $GetParam{AddressPool} ) {
-
-        # get address pool data
-        my %AddressPoolList = $Self->{AddressPoolObject}->NameList(
-            QueueDefault => 1,
-        );
-        my $AddressPoolData = $AddressPoolList{ $GetParam{AddressPool} };
-
-        # get address pool mails / default queue
-        %AddressPoolMails = map { $_ => 1 } $AddressPoolData->{Emails}->@*;
-        $AddressPoolQueue = $AddressPoolData->{QueueDefault};
-    }
-
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 # EO DiscreteSystemAddresses
 
     # get addresses
@@ -111,12 +89,12 @@ sub GetQueueID {
         next EMAIL if !$Address;
 
 # Rother OSS / DiscreteSystemAddresses
-
         # check if email exist in address pool
-        if ( %AddressPoolMails ) {
-            next EMAIL if !$AddressPoolMails{$Address};
-        }
+        if ( $GetParam{AddressPool} ) {
 
+            next EMAIL if
+                ( $AddressPoolObject->PoolLookup( Address => $Address ) // '' ) ne $GetParam{AddressPool};
+        }
 # EO DiscreteSystemAddresses
 
         # lookup queue id if recipiend address
@@ -150,10 +128,14 @@ sub GetQueueID {
     #   or an error occured while checking it.
 
 # Rother OSS / DiscreteSystemAddresses
+#    my $Queue   = $Kernel::OM->Get('Kernel::Config')->Get('PostmasterDefaultQueue');
+    my $Queue;
 
-#   my $Queue   = $Kernel::OM->Get('Kernel::Config')->Get('PostmasterDefaultQueue');
-    my $Queue   = $AddressPoolQueue || $Kernel::OM->Get('Kernel::Config')->Get('PostmasterDefaultQueue');
+    if ( $GetParam{AddressPool} ) {
+        $Queue = $Kernel::OM->Get('Kernel::Config')->Get('PostMaster::AddressPool')->{ $GetParam{AddressPool} }{'DefaultQueue'};
+    }
 
+    $Queue //= $Kernel::OM->Get('Kernel::Config')->Get('PostmasterDefaultQueue');
 # EO DiscreteSystemAddresses
 
     my $QueueID = $Kernel::OM->Get('Kernel::System::Queue')->QueueLookup(

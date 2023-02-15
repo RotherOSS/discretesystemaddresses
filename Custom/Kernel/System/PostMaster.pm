@@ -179,27 +179,27 @@ sub Run {
 
     my @Return;
 
-# Rother OSS / DiscreteSystemAddresses
-
     # ConfigObject section / get params
+# Rother OSS / DiscreteSystemAddresses
 #   my $GetParam = $Self->GetEmailParams();
+#
+#    # check if follow up
+#    my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
+
     my $GetParam = $Param{EmailParams} || $Self->GetEmailParams();
 
+    my ( $Tn, $TicketID );
 # EO DiscreteSystemAddresses
-
-    # check if follow up
-    my ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
     # get config objects
     my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
 # Rother OSS / DiscreteSystemAddresses
-
     my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
 
     my @TicketIDsToLink;
     if ( !$Param{AddressPool} ) {
-
+        ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 # EO DiscreteSystemAddresses
 
         # run all PreFilterModules (modify email params)
@@ -270,48 +270,48 @@ sub Run {
 # Rother OSS / DiscreteSystemAddresses
 
         # build mail address list
-        my %MailAddressList = $Self->{AddressPoolObject}->BuildMailAddressList(
+        my @AddressedPools = $Self->{AddressPoolObject}->FilterPools(
             Params => $GetParam,
         );
 
-        if (%MailAddressList) {
-
-            if ($TicketID) {
-
-                # set first address pool for follow up
-                $Param{AddressPool} = $Self->{AddressPoolObject}->NameLookup(
+        if ( @AddressedPools ) {
+            if ( $TicketID ) {
+                my $Pool = $Self->{AddressPoolObject}->PoolLookup(
                     TicketID => $TicketID,
                 );
-            }
-            else {
 
-                # set first address pool for new
-                my $FirstAddress    = ( sort keys %MailAddressList )[0];
-                $Param{AddressPool} = $MailAddressList{$FirstAddress};
-            }
+                if ( $Pool ) {
+                    if ( grep { $_ eq $Pool } @AddressedPools ) {
+                        $Param{AddressPool} = $Pool;
+                    }
 
-            ADDRESS:
-            for my $Address ( keys %MailAddressList ) {
-
-                # get address pool
-                my $AddressPool = $MailAddressList{$Address};
-
-                if (
-                    $Param{AddressPool}
-                    &&
-                    ( $Param{AddressPool} eq $AddressPool )
-                    )
-                {
-                    next ADDRESS;
+                    # if a follow up in a not addressed pool exists, look for linked tickets also in the parent run
+                    else {
+                        $Param{FollowUpTicketID} = $TicketID;
+                    }
                 }
 
-                my %EmailParams = %{$GetParam};
-                my $GetTicketID = $Self->RecursivePostMasterRun(
+                # if pools are addressed, non pool tickets are ignored
+                else {
+                    $Tn       = undef;
+                    $TicketID = undef;
+                }
+            }
+
+            $Param{AddressPool} //= shift @AddressedPools;
+
+            ADDRESS:
+            for my $Pool ( @AddressedPools ) {
+                next ADDRESS if $Pool eq $Param{AddressPool};
+
+                my %EmailParams  = %{$GetParam};
+                my $RecuTicketID = $Self->RecursivePostMasterRun(
                     EmailParams      => \%EmailParams,
-                    AddressPool      => $AddressPool,
+                    AddressPool      => $Pool,
                     FollowUpTicketID => $TicketID,
                 );
-                push( @TicketIDsToLink, $GetTicketID );
+
+                push @TicketIDsToLink, $RecuTicketID;
             }
 
             # set communication log to origin
@@ -321,20 +321,16 @@ sub Run {
             );
         }
     }
-    else {
 
-        ( $Tn, $TicketID ) = ();
-        if ( $Param{FollowUpTicketID} ) {
-            ( $Tn, $TicketID ) = $Self->{AddressPoolObject}->FindLinkedTicket(
-                TicketID    => $Param{FollowUpTicketID},
-                AddressPool => $Param{AddressPool},
-                UserID      => $Self->{PostmasterUserID},
-            );
-        }
+    if ( $Param{FollowUpTicketID} ) {
+        ( $Tn, $TicketID ) = $Self->{AddressPoolObject}->FindLinkedTicket(
+            TicketID    => $Param{FollowUpTicketID},
+            AddressPool => $Param{AddressPool},
+            UserID      => $Self->{PostmasterUserID},
+        );
     }
 
     if ( $Param{AddressPool} ) {
-
         $GetParam->{AddressPool} = $Param{AddressPool};
 
         XQUEUEHEADER:
@@ -623,20 +619,26 @@ sub Run {
     # create link of type 'Interdivisional' to tickets
     if (@TicketIDsToLink) {
 
-        # get linked tickets
-        my $OwnTicketID   = $Return[1];
+        push @Return, @TicketIDsToLink;
+
+        push @TicketIDsToLink, $Return[1];
+
+        # add the original follow up ID, if it was in a pool not addressed
+        if ( $Param{FollowUpTicketID} ) {
+            push @TicketIDsToLink, $Param{FollowUpTicketID};
+        }
+
+        # add all tickets already linked
         my %LinkedTickets = $LinkObject->LinkKeyList(
             Object1 => 'Ticket',
-            Key1    => $OwnTicketID,
+            Key1    => $TicketID,
             Object2 => 'Ticket',
             State   => 'Valid',
             Type    => 'Interdivisional',
             UserID  => $Self->{PostmasterUserID},
         );
-        push( @TicketIDsToLink, $OwnTicketID );
 
-        my %TicketIDUsed;
-        @TicketIDsToLink = map { $TicketIDUsed{$_}++ == 0 ? $_ : () } @TicketIDsToLink, keys %LinkedTickets;
+        push @TicketIDsToLink, keys %LinkedTickets;
 
         $Self->{AddressPoolObject}->InterdivisionalTicketLinkAdd(
             TicketIDs => \@TicketIDsToLink,

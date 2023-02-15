@@ -33,7 +33,6 @@ $ConfigObject->Set(
     Value => 0,
 );
 
-my $LinkObject          = $Kernel::OM->Get('Kernel::System::LinkObject');
 my $QueueObject         = $Kernel::OM->Get('Kernel::System::Queue');
 my $TicketObject        = $Kernel::OM->Get('Kernel::System::Ticket');
 my $ArticleObject       = $Kernel::OM->Get('Kernel::System::Ticket::Article');
@@ -49,303 +48,500 @@ $Kernel::OM->ObjectParamAdd(
 my $Helper = $Kernel::OM->Get('Kernel::System::UnitTest::Helper');
 FixedTimeSet();
 
-my $SPMail = <<'EOF',
-Content-Type: multipart/mixed; boundary="------------pqKFDfCKOJbavE96BjxA1Yxy"
+# Pool |        Address | Queue
+#   P1   a1p1@otobo.org      q1
+#   P1   a2p1@otobo.org
+#   P2   a1p2@otobo.org      q2
+#   P2   a2p2@otobo.org      q5
+#   P3   a1p3@otobo.org      q3
+#   P3   a2p3@otobo.org
+#          ax@otobo.org
 
-This is a multi-part message in MIME format.
---------------pqKFDfCKOJbavE96BjxA1Yxy
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-
-AddressPool Test
-
---------------pqKFDfCKOJbavE96BjxA1Yxy--
-
-EOF
+# Pool | DefQueue
+#   P1         q4
+#   P2         q5
+#   P3         q3
+#              q5
 
 # add system addresses
-my @SystemAddresses;
-my @SystemAddressIDs;
-for my $Index ( 1 .. 5 ) {
+my %SystemAddressIDs;
+for my $Address ( qw/a1p1@otobo.org a1p2@otobo.org a1p3@otobo.org a2p2@otobo.org unused@otobo.org/ ) {
+    my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
+        Name     => $Address,
+        Realname => 'APTest',
+        ValidID  => 1,
+        QueueID  => 1,
+        UserID   => 1,
+    );
 
-    my $SARandomID = $Helper->GetRandomID();
-    my $SAName     = $SARandomID . '@example.com';
-    if ( $Index < 4 ) {
-
-        my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
-            Name     => $SAName,
-            Realname => 'SystemAddress' . $SARandomID,
-            ValidID  => 1,
-            QueueID  => 1,
-            UserID   => 1,
-        );
-        push( @SystemAddressIDs, $SystemAddressID );
-    }
-
-    push( @SystemAddresses,  $SAName );
+    $SystemAddressIDs{ $Address } = $SystemAddressID;
 }
 
+my %QueueAddresses = (
+    q1 => 'a1p1@otobo.org',
+    q2 => 'a1p2@otobo.org',
+    q3 => 'a1p3@otobo.org',
+    q4 => 'unused@otobo.org',
+    q5 => 'a2p2@otobo.org',
+);
+
 # add queues
-my @QueueIDs;
-my @DefaultQueues;
-my %SystemAddressList = $SystemAddressObject->SystemAddressList();
-%SystemAddressList    = reverse %SystemAddressList;
-for my $SystemAddress ( @SystemAddresses ) {
-
-    my $QName           = 'Queue' . $Helper->GetRandomID();
-    my $SystemAddressID = $SystemAddressList{$SystemAddress};
-    if ( !$SystemAddressID ) {
-        $SystemAddressID = 1;
-    }
-
+my %QueueIDs;
+for my $Queue ( keys %QueueAddresses ) {
     my $QueueID = $QueueObject->QueueAdd(
-        Name            => $QName,
+        Name            => $Queue,
         ValidID         => 1,
         GroupID         => 1,
-        SystemAddressID => $SystemAddressID,
+        SystemAddressID => $SystemAddressIDs{ $QueueAddresses{ $Queue } },
         SalutationID    => 1,
         SignatureID     => 1,
         UserID          => 1,
     );
-    push( @DefaultQueues, $QName );
-    push( @QueueIDs, $QueueID );
-}
 
-# update system addresses to queue
-for my $QueueID ( @QueueIDs ) {
+    $QueueIDs{ $Queue } = $QueueID;
 
-    my %QueueData = $QueueObject->QueueGet(
-        ID    => $QueueID,
-    );
-
+    # update system address
     my %SystemAddressData = $SystemAddressObject->SystemAddressGet(
-        ID => $QueueData{SystemAddressID},
+        ID => $SystemAddressIDs{ $QueueAddresses{ $Queue } },
     );
 
-    if ( %SystemAddressData ) {
+    $SystemAddressData{QueueID} = $QueueID;
 
-        $SystemAddressData{QueueID} = $QueueID;
-
-        $SystemAddressObject->SystemAddressUpdate(
-            %SystemAddressData,
-            UserID   => 1,
-        );
-    }
+    $SystemAddressObject->SystemAddressUpdate(
+        %SystemAddressData,
+        UserID   => 1,
+    );
 }
 
 # set address pools
-if ( ref $ConfigObject->Get('PostMaster::AddressPool') eq 'HASH' ) {
-
+{
     my %AddressPoolData = (
-        1 => {
+        Pool01 => {
+            Name   => 'P1',
             Emails => [
-                $SystemAddresses[0],
-                $SystemAddresses[3],
+                'a1p1@otobo.org',
+                'a2p1@otobo.org',
             ],
-            QueueDefault => $DefaultQueues[3],
+            DefaultQueue => 'q4',
         },
-        2 => {
+        Pool02 => {
+            Name   => 'P2',
             Emails => [
-                $SystemAddresses[1],
+                'a1p2@otobo.org',
+                'a2p2@otobo.org',
             ],
-            QueueDefault => $DefaultQueues[4],
+            DefaultQueue => 'q5',
         },
-        3 => {
+        Pool03 => {
+            Name   => 'P3',
             Emails => [
-                $SystemAddresses[2],
+                'a1p3@otobo.org',
+                'a2p3@otobo.org',
             ],
-            QueueDefault => $DefaultQueues[2],
+            DefaultQueue => 'q3',
         },
     );
-
-    my %AddressPools;
-    for my $Count ( keys %AddressPoolData ) {
-
-        my $APName = 'AddressPool' . $Helper->GetRandomID();
-        my %Data   = %{ $ConfigObject->Get('PostMaster::AddressPool') };
-        $AddressPools{ 'Custom0' . $Count }               = $Data{ 'Custom0' . $Count };
-        $AddressPools{ 'Custom0' . $Count }{Name}         = $APName;
-        $AddressPools{ 'Custom0' . $Count }{Emails}       = $AddressPoolData{$Count}{Emails};
-        $AddressPools{ 'Custom0' . $Count }{QueueDefault} = $AddressPoolData{$Count}{QueueDefault};
-    }
 
     $Helper->ConfigSettingChange(
         Valid => 1,
         Key   => 'PostMaster::AddressPool',
-        Value => \%AddressPools,
+        Value => \%AddressPoolData,
     );
 }
 
-# filter test
-my @Tests = (
+# Start tests
 
-    # New mail is sent to different adress pools, both linked
-    {
-        Name             => 'New mail is sent to different adress pools, both linked',
-        From             => 'From: Customer <test@example.com>',
-        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
-        Subject          => 'Subject: address pool - test v1',
-        LTCount          => 1,
-        LTQueueID        => $QueueIDs[1],
-        LTArticleCount   => 1,
-        OrigQueueID      => $QueueIDs[0],
-        OrigArticleCount => 1,
-        TicketCheck      => 1,
-    },
-
-    # Follow-Up mail is sent to different adress pools, both linked
-    {
-        Name             => 'Follow-Up mail is sent to different adress pools, both linked',
-        From             => 'From: Customer <test@example.com>',
-        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[1],
-        Subject          => 'Subject: Re: [Ticket#%s] address pool - test v2',
-        LTCount          => 1,
-        LTQueueID        => $QueueIDs[1],
-        LTArticleCount   => 2,
-        OrigQueueID      => $QueueIDs[0],
-        OrigArticleCount => 2,
-        TicketCheck      => 2,
-    },
-
-    # Follow-Up mail is sent to different adress pools, new ticket, both linked
-    {
-        Name             => 'Follow-Up mail is sent to different adress pools, new ticket, both linked',
-        From             => 'From: Customer <test@example.com>',
-        To               => 'To: ' . $SystemAddresses[0] . ', ' . $SystemAddresses[2],
-        Subject          => 'Subject: Re: [Ticket#%s] address pool - test v3',
-        LTCount          => 2,
-        LTQueueID        => $QueueIDs[2],
-        LTArticleCount   => 1,
-        OrigQueueID      => $QueueIDs[0],
-        OrigArticleCount => 3,
-        TicketCheck      => 2,
-    },
+# Test: Ticket#x in q1 (ignore defqueue of a2p1), Ticket#y in q2, nothing in q5
+my $Email = GenerateEmail(
+    To        => 'a2p1@otobo.org, a1p1@otobo.org, a1p2@otobo.org, not@ours.com',
+    Subject   => 'Initial',
+    MessageID => '<20230214002814.AddressPools1@test>',
 );
 
-# run tests
-my $GetTicketID;
-for my $Test (@Tests) {
+my ( $Return, @TicketIDs ) = ReadEmail( $Email );
 
-    my @Return;
+# two tickets should be created...
+$Self->Is(
+    scalar @TicketIDs,
+    2,
+    "Mail1 - create two tickets.",
+);
 
+my @TestTickets;
+for my $ID ( @TicketIDs ) {
+    push @TestTickets, {
+        $TicketObject->TicketGet( TicketID => $ID )
+    };
+}
+
+# ticket 1 should be in q1
+$Self->Is(
+    $TestTickets[0]{Queue} // '',
+    'q1',
+    "Mail1 - Ticket1 is in q1.",
+);
+
+# ticket 2 should be in q2
+$Self->Is(
+    $TestTickets[1]{Queue} // '',
+    'q2',
+    "Mail1 - Ticket2 is in q2.",
+);
+
+my @Articles = $ArticleObject->ArticleList(
+    TicketID => $TestTickets[0]{TicketID},
+);
+
+# ticket 1 should have exactly 1 article
+$Self->Is(
+    scalar @Articles,
+    1,
+    "Mail1 - Ticket1 has 1 article.",
+);
+
+# Test: Ticket1#Number -> FollowUp in q2, New in q3 (defqueue)
+my $NewSubject = $TicketObject->TicketSubjectBuild(
+    TicketNumber => $TestTickets[0]{TicketNumber},
+    Subject      => 'Initial',
+    Action       => 'Reply',
+);
+
+$Email = GenerateEmail(
+    To        => 'a1p2@otobo.org, a2p3@otobo.org',
+    Subject   => $NewSubject,
+    MessageID => '<20230214002814.AddressPools2@test>',
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# two articles should be created...
+$Self->Is(
+    scalar @TicketIDs,
+    2,
+    "Mail2 - create two articles.",
+);
+
+# ticket 1 should be ticket 2 of last email
+$Self->Is(
+    $TicketIDs[0],
+    $TestTickets[1]{TicketID},
+    "Mail2 - Ticket1 is old Ticket2.",
+);
+
+push @TestTickets, {
+    $TicketObject->TicketGet( TicketID => $TicketIDs[1] ),
+};
+
+# ticket 3 should be in q3
+$Self->Is(
+    $TestTickets[2]{Queue} // '',
+    'q3',
+    "Mail2 - Ticket2 is in q3.",
+);
+
+# keep for later
+my $Email2 = $Email;
+
+# Test: Re Ticket3#Number creates article in Ticket1
+$NewSubject = $TicketObject->TicketSubjectBuild(
+    TicketNumber => $TestTickets[2]{TicketNumber},
+    Subject      => 'Initial',
+    Action       => 'Reply',
+);
+
+$Email = GenerateEmail(
+    To        => 'a1p1@otobo.org',
+    Subject   => $NewSubject,
+    MessageID => '<20230214002814.AddressPools3@test>',
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# ticket 1 should be ticket 1 of the first email
+$Self->Is(
+    $TicketIDs[0],
+    $TestTickets[0]{TicketID},
+    "Mail3 - Ticket1 is old Ticket1.",
+);
+
+@Articles = $ArticleObject->ArticleList(
+    TicketID => $TestTickets[0]{TicketID},
+);
+
+# ticket 1 should have 2 articles
+$Self->Is(
+    scalar @Articles,
+    2,
+    "Mail3 - Ticket1 has 2 articles.",
+);
+
+# Test: standard case
+$Email = GenerateEmail(
+    To        => 'ax@otobo.org',
+    Subject   => 'Kein Pool',
+    MessageID => '<20230214002814.AddressPools4@test>',
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# one ticket should be created
+$Self->Is(
+    scalar @TicketIDs,
+    1,
+    "Mail4 - a ticket is created.",
+);
+
+my %Ticket = $TicketObject->TicketGet( TicketID => $TicketIDs[0] );
+
+# ticket is in default queue
+$Self->Is(
+    $Ticket{Queue},
+    $ConfigObject->Get('PostmasterDefaultQueue'),
+    "Mail4 - ticket is created in def queue.",
+);
+
+# Test: ignore already received mails
+( $Return, @TicketIDs ) = ReadEmail( $Email2 );
+
+# one ticket should be created
+$Self->Is(
+    $Return,
+    5,
+    "Mail5 - mail ignored.",
+);
+
+# one ticket should be created
+$Self->Is(
+    scalar @TicketIDs,
+    0,
+    "Mail5 - no article.",
+);
+
+# Test: Re Ticket3#Number creates article in Ticket1
+$NewSubject = $TicketObject->TicketSubjectBuild(
+    TicketNumber => $TestTickets[2]{TicketNumber},
+    Subject      => 'Initial',
+    Action       => 'Reply',
+);
+
+$Email = GenerateEmail(
+    To        => 'a1p1@otobo.org, a1p2@otobo.org',
+    Subject   => $NewSubject,
+    MessageID => '<20230214002814.AddressPools6@test>',
+    XHeader   => "\nX-OTOBO-FollowUp-Queue: q5",
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# ticket 1 should be ticket 1 of the first email
+$Self->Is(
+    $TicketIDs[0],
+    $TestTickets[0]{TicketID},
+    "Mail6 - Ticket1 is old Ticket1.",
+);
+
+# ticket 2 should be ticket 2 of the first email
+$Self->Is(
+    $TicketIDs[1],
+    $TestTickets[1]{TicketID},
+    "Mail6 - Ticket2 is old Ticket2.",
+);
+
+for my $i ( 0, 1 ) {
+    $TestTickets[$i] = { $TicketObject->TicketGet( TicketID => $TicketIDs[$i] ) };
+}
+
+# ticketqueue 1 should still be q1
+$Self->Is(
+    $TestTickets[0]->{Queue},
+    'q1',
+    "Mail6 - Queue of Ticket 1 is q1.",
+);
+
+# ticketqueue 2 should now be q5 of the X-OTOBO-FollowUp-Queue header
+$Self->Is(
+    $TestTickets[1]->{Queue},
+    'q5',
+    "Mail6 - Queue of Ticket 2 is q5.",
+);
+
+
+# cleanup is done by RestoreDatabase.
+$Self->DoneTesting();
+
+
+sub GenerateEmail {
+    my %Param = @_;
+
+    $Param{XHeader} //= '';
+
+    return <<END
+From skywalker\@otobo.org Fri Dec 21 23:59:24 2001
+Return-Path: <skywalker\@otobo.org>
+Received: (from skywalker\@localhost)
+    by avro.de (8.11.3/8.11.3/SuSE Linux 8.11.1-0.5) id f3MMSE303694
+    for martin\@localhost; Fri, 21 Dec 2001 23:59:24 +0200
+Date: Fri, 21 Dec 2001 23:59:24 +0200
+From: Skywalker Attachment <skywalker\@otobo.org>
+To: $Param{To}
+Subject: $Param{Subject}
+Message-ID: $Param{MessageID}
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline$Param{XHeader}
+X-Operating-System: Linux 2.4.10-4GB i686
+X-Uptime: 12:23am  up  5:19,  6 users,  load average: 0.11, 0.13, 0.18
+Content-Length: 139
+Lines: 11
+
+This is the first test.
+
+Adios ...
+
+  Little "Skywalker"
+
+--
+System Tester I - <skywalker\@otobo.org>
+--
+Old programmers never die. They just branch to a new address.
+END
+}
+
+sub ReadEmail {
+    # start a new incoming communication
     my $CommunicationLogObject = $Kernel::OM->Create(
         'Kernel::System::CommunicationLog',
         ObjectParams => {
-            Transport => 'Email',
-            Direction => 'Incoming',
+            Transport   => 'Email',
+            Direction   => 'Incoming',
+            AccountType => 'STDIN',
         },
     );
-    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
 
-    # build mail
-    if ($GetTicketID) {
+    # start object log for the incoming connection
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Connection' );
 
-        my $TicketNumber = $TicketObject->TicketNumberLookup(
-            TicketID => $GetTicketID,
-        );
-        $Test->{Subject} = sprintf( $Test->{Subject}, $TicketNumber );
-    }
-    my $Email = "Message-ID: <" . $Helper->GetRandomID() . "\@example.com>\n"
-        . $Test->{From} . "\n"
-        . $Test->{To} . "\n"
-        . $Test->{Subject} . "\n"
-        . $SPMail
-        ;
-
-    my $PostMasterObject = Kernel::System::PostMaster->new(
-        CommunicationLogObject => $CommunicationLogObject,
-        Email                  => \$Email,
-        Debug                  => 2,
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Connection',
+        Priority      => 'Debug',
+        Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+        Value         => 'Read Email from AddressPoolTest.',
     );
 
-    @Return = $PostMasterObject->Run();
+    # start object log for the email processing
+    $CommunicationLogObject->ObjectLogStart( ObjectLogType => 'Message' );
+
+    # remember the return code to stop the communictaion later with a proper status
+    my $PostMasterReturnCode = 0;
+    my @Return;
+
+    # Wrap the main part of the script in an "eval" block so that any
+    # unexpected (but probably transient) fatal errors (such as the
+    # database being unavailable) can be trapped without causing a
+    # bounce
+    eval {
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+            Value         => 'Processing email with PostMaster module.',
+        );
+
+        my $PostMasterObject = $Kernel::OM->Create(
+            'Kernel::System::PostMaster',
+            ObjectParams => {
+                CommunicationLogObject => $CommunicationLogObject,
+                Email                  => [ split("\n", $_[0]) ],
+                Trusted                => 1,
+            },
+        );
+
+        @Return = $PostMasterObject->Run();
+
+        if ( !$Return[0] ) {
+
+            $CommunicationLogObject->ObjectLog(
+                ObjectLogType => 'Message',
+                Priority      => 'Error',
+                Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+                Value         => 'PostMaster module exited with errors, could not process email. Please refer to the log!',
+            );
+            $CommunicationLogObject->CommunicationStop( Status => 'Failed' );
+
+            die "Could not process email. Please refer to the log!\n";
+        }
+
+        my $Dump = $Kernel::OM->Get('Kernel::System::Main')->Dump( \@Return );
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Debug',
+            Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+            Value         => "Email processing with PostMaster module completed, return data: $Dump",
+        );
+
+        $PostMasterReturnCode = $Return[0];
+    };
+
+    if ($@) {
+
+        # An unexpected problem occurred (for example, the database was
+        # unavailable). Return an EX_TEMPFAIL error to cause the mail
+        # program to requeue the message instead of immediately bouncing
+        # it; see sysexits.h. Most mail programs will retry an
+        # EX_TEMPFAIL delivery for about four days, then bounce the
+        # message.)
+        my $Message = $@;
+
+        $CommunicationLogObject->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Error',
+            Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+            Value         => "An unexpected error occurred, message: $Message",
+        );
+
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Message',
+            Status        => 'Failed',
+        );
+        $CommunicationLogObject->ObjectLogStop(
+            ObjectLogType => 'Connection',
+            Status        => 'Failed',
+        );
+        $CommunicationLogObject->CommunicationStop( Status => 'Failed' );
+
+        return;
+    }
+
+    $CommunicationLogObject->ObjectLog(
+        ObjectLogType => 'Connection',
+        Priority      => 'Debug',
+        Key           => 'Kernel::System::Console::Command::Maint::PostMaster::Read',
+        Value         => 'Closing connection from STDIN.',
+    );
 
     $CommunicationLogObject->ObjectLogStop(
         ObjectLogType => 'Message',
         Status        => 'Successful',
     );
+    $CommunicationLogObject->ObjectLogStop(
+        ObjectLogType => 'Connection',
+        Status        => 'Successful',
+    );
+
+    my %ReturnCodeMap = (
+        0 => 'Failed',        # error (also false)
+        1 => 'Successful',    # new ticket created
+        2 => 'Successful',    # follow up / open/reopen
+        3 => 'Successful',    # follow up / close -> new ticket
+        4 => 'Failed',        # follow up / close -> reject
+        5 => 'Successful',    # ignored (because of X-OTOBO-Ignore header)
+    );
+
     $CommunicationLogObject->CommunicationStop(
-        Status => 'Successful',
+        Status => $ReturnCodeMap{$PostMasterReturnCode} // 'Failed',
     );
 
-    $Self->True(
-        $Return[1] || 0,
-        "$Test->{Name} - ticket of original mail exist",
-    );
-    $Self->Is(
-        $Return[0] || 0,
-        $Test->{TicketCheck},
-        "$Test->{Name} - article of original mail created",
-    );
-
-    if ( !$GetTicketID ) {
-        $GetTicketID = $Return[1];
-    }
-
-    my $LinkedTicket = $LinkObject->LinkList(
-        Object => 'Ticket',
-        Key    => $GetTicketID,
-        State  => 'Valid',
-        Type   => 'Interdivisional',
-        UserID => 1,
-    );
-    my $LTCount = keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} };
-
-    $Self->Is(
-        $LTCount || 0,
-        $Test->{LTCount},
-        "$Test->{Name} - linked ticket(s) of original mail exist",
-    );
-
-    my @TicketIDs;
-    for my $LTID ( sort keys %{ $LinkedTicket->{Ticket}->{Interdivisional}->{Source} } ) {
-        push( @TicketIDs, $LTID );
-    }
-    my $LinkedTicketID = $TicketIDs[ $LTCount - 1 ];
-    push( @TicketIDs, $GetTicketID );
-
-    my %TicketData;
-    for my $TicketID (@TicketIDs) {
-
-        my @Articles = $ArticleObject->ArticleList(
-            TicketID => $TicketID,
-        );
-        my $ArticleCount = scalar(@Articles);
-
-        my $TicketQueueID = $TicketObject->TicketQueueID(
-            TicketID => $TicketID,
-        );
-
-        my %Data = (
-            QueueID      => $TicketQueueID,
-            ArticleCount => $ArticleCount,
-        );
-        $TicketData{$TicketID} = \%Data;
-    }
-
-    $Self->Is(
-        $TicketData{$GetTicketID}{ArticleCount} || 0,
-        $Test->{OrigArticleCount},
-        "$Test->{Name} - article count of original ticket is correct.",
-    );
-    $Self->Is(
-        $TicketData{$LinkedTicketID}{ArticleCount} || 0,
-        $Test->{LTArticleCount},
-        "$Test->{Name} - article count of linked ticket is correct.",
-    );
-
-    $Self->Is(
-        $TicketData{$GetTicketID}{QueueID} || 0,
-        $Test->{OrigQueueID},
-        "$Test->{Name} - queue of original ticket is correct.",
-    );
-    $Self->Is(
-        $TicketData{$LinkedTicketID}{QueueID} || 0,
-        $Test->{LTQueueID},
-        "$Test->{Name} - queue of linked ticket is correct.",
-    );
+    return @Return;
 }
 
-# cleanup is done by RestoreDatabase.
-
-$Self->DoneTesting();

@@ -405,7 +405,7 @@ sub SystemAddressIsLocalAddress {
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 
     # get address pool
-    my $AddressPool = $AddressPoolObject->NameLookup(
+    my $AddressPool = $AddressPoolObject->PoolLookup(
         Address => $Param{Address},
     );
 
