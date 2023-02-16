@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_config version="2.0" init="Application">
-    <Setting Name="PostMaster::AddressPool###Pool01" Required="0" Valid="1">
+    <Setting Name="PostMaster::AddressPool###Pool01" Required="0" Valid="0">
         <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
@@ -161,12 +161,12 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="PostMaster::PreFilterModule###000-MatchMessageID" Required="1" Valid="1">
-        <Description Translatable="1">Module to check if mail with message id already exist.</Description>
+    <Setting Name="PostMaster::PreFilterModule###000-SkipViaMessageID" Required="0" Valid="1">
+        <Description Translatable="1">Module to check if an article with the corresponding message id already exists in the system. (The mail was received and processed through a different email inbox.)</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
             <Hash>
-                <Item Key="Module">Kernel::System::PostMaster::Filter::MatchMessageID</Item>
+                <Item Key="Module">Kernel::System::PostMaster::Filter::SkipViaMessageID</Item>
             </Hash>
         </Value>
     </Setting>
