@@ -503,12 +503,10 @@ sub Run {
                 }
 
 # Rother OSS / DiscreteSystemAddresses
-
                 my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                     Address  => $Email->address(),
                     TicketID => $Self->{TicketID},
                 );
-
 # EO DiscreteSystemAddresses
 
                 if ($IsLocal) {
@@ -1576,6 +1574,9 @@ sub Run {
         for my $Email ( Mail::Address->parse( $Data{To} ) ) {
             my $IsLocal = $SystemAddress->SystemAddressIsLocalAddress(
                 Address => $Email->address(),
+# Rother OSS / DiscreteSystemAddresses
+                TicketID => $Self->{TicketID},
+# EO DiscreteSystemAddresses
             );
             if ( !$IsLocal ) {
                 if ( $Data{Cc} ) {
@@ -1668,6 +1669,9 @@ sub Run {
                         $Recipient{$Address} = 1;
                         my $IsLocal = $SystemAddress->SystemAddressIsLocalAddress(
                             Address => $Address,
+# Rother OSS / DiscreteSystemAddresses
+                            TicketID => $Self->{TicketID},
+# EO DiscreteSystemAddresses
                         );
                         if ( !$IsLocal ) {
                             if ($NewLine) {

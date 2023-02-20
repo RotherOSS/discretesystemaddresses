@@ -830,6 +830,9 @@ sub Run {
                         $Recipient{$Address} = 1;
                         my $IsLocal = $SystemAddress->SystemAddressIsLocalAddress(
                             Address => $Address,
+# Rother OSS / DiscreteSystemAddresses
+                            TicketID => $Self->{TicketID},
+# EO DiscreteSystemAddresses
                         );
                         if ( !$IsLocal ) {
                             if ($NewLine) {
