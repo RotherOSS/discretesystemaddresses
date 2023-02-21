@@ -7,7 +7,7 @@ Sacrifice to Sphinx
 
 Description
 ===========
-This extension facilitates communication between system addresses within OTOBO (e.g. in cc), by linking tickets in different queues to each other and using address pools to ensure a new article is added to all relevant tickets within the system (e.g. one in the IT Queue and one in HR).
+This extension facilitates communication between system addresses within OTOBO (e.g. in cc), by defining address pools which are treated as separate entities in the system. Mails sent to multiple pools create an article in every pool, associated tickets are linked and will be used to assign FollowUps.
 
 System requirements
 ===================
@@ -26,30 +26,17 @@ Third-party software
 
 Usage
 =====
-This extension enables OTOBO to handle emails between system addresses, and makes sure that replies are added to all relevant tickets in the system.
 
-Address pools can be defined to detail which system addresses belong to one pool – and thus point to the same ticket/queue (e.g. helpdesk@..., it@... and support@... as system addresses of the IT Department).
+Details
+-------
+Address pools can be defined to detail which email addresses and implicitely queues belong to one entity.
 
 Example:
 
-When an OTOBO Agent from IT writes an email to a customer and puts HR in cc, two tickets are created in the system – Ticket#123 in the queue "IT" and a linked ticket #198 in queue "HR".
+When an email to an IT and a sales department, both set up as different entities, is received, two tickets are created in the system – Ticket#123 in the queue "IT::Incidents" and a linked Ticket#124 in the queue "Inquiries".
+Sales can now answer the customer "Re: [Ticket#124] My Problem; Please discuss this with the IT directly.", and just put it@ourticketsystem into the cc. This will create the respective article in Ticket#123, and if the customer now only sends his answer to it@ourticketsystem, even if it is an answer to the last mail and uses the subject "Re: [Ticket#124] My Problem - specification", the FollowUp will be created in Ticket#123 (email addresses take precedence).
 
-If an email reply "Re: [Ticket#123] My Problem" is now sent from an "HR" address to addresses in the address pools "IT-Management" and "Building-Management", follow-ups are generated in ticket #123 and #198.
-
-Moreover, a new ticket is created in the "Building" queue, which is linked to Ticket#123 and Ticket#198.
-
-Setup
------
-Go to "Admin -> System Configuration" and search for "AddressPool".
-
-You have to choose one of them for example and define a pool name with their mail addresses and default queue.
-
-|
-.. image:: Screenshot_DiscreteSystemAddress_AddressPool.png
-  :align: left
-  :width: 500
-  :alt: Screenshot showing address pool settings.
-|
+As an important note: Since single emails may now create multiple articles (necessary for email aliases), single emails (identified by the messageid) cannot be read in multiple times. For almost all cases this should not make any difference, but it means that even with this OTOBO extension it won't be possible to bounce an email from one address pool to another.
 
 Configuration Reference
 -----------------------
@@ -57,56 +44,16 @@ Configuration Reference
 Core::Email::PostMaster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PostMaster::PreFilterModule###000-MatchMessageID
+PostMaster::PreFilterModule###000-SkipViaMessageID
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Module to check if mail with message id already exist.
+Module to check if an article with the corresponding message id already exists in the system. (The mail was received and processed through a different email inbox.)
 
 Core::Email::PostMaster::AddressPool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PostMaster::AddressPool###Custom01
+PostMaster::AddressPool###Pool01
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom02
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom03
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom04
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom05
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom06
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom07
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom08
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom09
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::AddressPool###Custom10
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
-
-PostMaster::PreFilterModule###000-MatchMessageID
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Module to check if mail with message id already exist.
 
 Core::LinkObject
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
