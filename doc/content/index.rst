@@ -38,6 +38,8 @@ Sales can now answer the customer "Re: [Ticket#124] My Problem; Please discuss t
 
 As an important note: Since single emails may now create multiple articles (necessary for email aliases), single emails (identified by the messageid) cannot be read in multiple times. For almost all cases this should not make any difference, but it means that even with this OTOBO extension it won't be possible to bounce an email from one address pool to another.
 
+Warning: Be careful with setting up automatic replies - this package introduces additional ways to create loops, especially when replies are also sent on FollowUps.
+
 Configuration Reference
 -----------------------
 
