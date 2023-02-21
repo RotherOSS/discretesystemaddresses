@@ -19,6 +19,8 @@ package Kernel::System::PostMaster::Filter::SkipViaMessageID;
 use strict;
 use warnings;
 
+use Mail::Address;
+
 our @ObjectDependencies = (
     'Kernel::System::Log',
     'Kernel::System::Ticket::Article',
@@ -64,16 +66,32 @@ sub Run {
         MessageID => $MessageID,
     );
 
-    if (%Article) {
+    if ( %Article ) {
+        # if an article is found, still it could be created and sent by OTOBO
+        my ( $SenderEmail ) = Mail::Address->parse( $Article{From} );
 
-        $Self->_AddCommunicationLog(
-            Message => sprintf(
-                'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
-                $MessageID,
-            ),
+        my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
+            Address => $SenderEmail->address(),
         );
 
-        $Param{GetParam}->{'X-OTOBO-Ignore'} = 'yes';
+        # if multiple articles exist, or the article is from an external sender, it has already been processed though, and we have to skip
+        if ( $Article{AmbiguousMessageID} || !$IsLocal ) {
+            $Self->_AddCommunicationLog(
+                Message => sprintf(
+                    'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
+                    $MessageID,
+                ),
+            );
+            $Param{GetParam}->{'X-OTOBO-Ignore'} = 'yes';
+        }
+        else {
+            $Self->_AddCommunicationLog(
+                Message => sprintf(
+                    'Email with message id "%s" was sent as new article from a local address.',
+                    $MessageID,
+                ),
+            );
+        }
     }
 
     return 1;

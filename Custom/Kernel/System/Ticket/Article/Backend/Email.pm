@@ -113,7 +113,7 @@ sub ArticleGetByMessageID {
             ORDER BY sa.id DESC
         ',
         Bind  => [ \$MD5 ],
-        Limit => 1,
+        Limit => 2,
     );
 
 # EO DiscreteSystemAddresses
@@ -130,7 +130,6 @@ sub ArticleGetByMessageID {
     return if !$Param{TicketID} || !$Param{ArticleID};
 
 # Rother OSS / DiscreteSystemAddresses
-
 #   # More than one reference found! That should not happen, since 'a message_id' should be unique!
 #   if ( $Count > 1 ) {
 #       $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -140,7 +139,7 @@ sub ArticleGetByMessageID {
 #       );
 #       return;
 #   }
-
+    $Param{AmbiguousMessageID} = $Count-1;
 # EO DiscreteSystemAddresses
 
     return $Self->ArticleGet(
