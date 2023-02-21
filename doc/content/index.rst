@@ -29,7 +29,7 @@ Usage
 
 Details
 -------
-Address pools can be defined to detail which email addresses and implicitely queues belong to one entity.
+Address pools can be defined to define which email addresses and implicitely queues belong to one entity. Within those entities destination queues are determined as usual. Individual default queues can be provided. X-OTOBO-Queue and X-OTOBO-FollowUpQueue are only respected for articles created in the respective pool.
 
 Example:
 
@@ -46,14 +46,14 @@ Core::Email::PostMaster
 
 PostMaster::PreFilterModule###000-SkipViaMessageID
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Module to check if an article with the corresponding message id already exists in the system. (The mail was received and processed through a different email inbox.)
+Module to check if an article with the corresponding message id already exists in the system. (E.g. if the mail was received and processed through a different email inbox.)
 
 Core::Email::PostMaster::AddressPool
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PostMaster::AddressPool###Pool01
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Defines addresses in pool to communicate with each other as entities.
+All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.
 
 Core::LinkObject
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

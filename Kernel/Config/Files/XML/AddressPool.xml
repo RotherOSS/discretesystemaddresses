@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_config version="2.0" init="Application">
     <Setting Name="PostMaster::AddressPool###Pool01" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -15,7 +15,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool02" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -29,7 +29,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool03" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -43,7 +43,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool04" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -57,7 +57,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool05" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -71,7 +71,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool06" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -85,7 +85,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool07" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -99,7 +99,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool08" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -113,7 +113,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool09" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -127,7 +127,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::AddressPool###Pool10" Required="0" Valid="0">
-        <Description Translatable="1">Defines addresses in pool to communicate with each other as entities.</Description>
+        <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>
         <Value>
             <Hash>
@@ -162,7 +162,7 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::PreFilterModule###000-SkipViaMessageID" Required="0" Valid="1">
-        <Description Translatable="1">Module to check if an article with the corresponding message id already exists in the system. (The mail was received and processed through a different email inbox.)</Description>
+        <Description Translatable="1">Module to check if an article with the corresponding message id already exists in the system. (E.g. if the mail was received and processed through a different email inbox.)</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
             <Hash>
