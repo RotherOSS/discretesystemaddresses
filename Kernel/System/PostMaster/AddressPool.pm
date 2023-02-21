@@ -82,7 +82,37 @@ sub FilterPools {
     my %PoolsSeen;
     my @Pools;
     HEADER:
-    for my $Header (qw(Resent-To Envelope-To To Cc Delivered-To X-Original-To)) {
+    for my $Header (qw(Resent-To Envelope-To To Cc)) {
+
+        next HEADER if !$GetParam{$Header};
+
+        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
+        EMAIL:
+        for my $Email (@Emails) {
+
+            next EMAIL if !$Email;
+
+            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+
+            next EMAIL if !$Address;
+
+            my $AddressPool = $Self->PoolLookup(
+                Address => $Address
+            );
+
+            next EMAIL if !$AddressPool;
+
+            next EMAIL if $PoolsSeen{ $AddressPool }++;
+
+            push @Pools, $AddressPool;
+        }
+    }
+
+    return @Pools if @Pools;
+
+    # if no pools are addressed in the above set of headers, also look for secondary ones
+    HEADER:
+    for my $Header (qw(Delivered-To X-Original-To)) {
 
         next HEADER if !$GetParam{$Header};
 
