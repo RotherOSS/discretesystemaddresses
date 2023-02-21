@@ -617,10 +617,12 @@ sub Run {
 # Rother OSS / DiscreteSystemAddresses
 
     # create link of type 'Interdivisional' to tickets
-    if (@TicketIDsToLink) {
+    if ( @TicketIDsToLink || $Param{FollowUpTicketID} ) {
 
+        # add all ticket ids to the return - mainly used for unit tests
         push @Return, @TicketIDsToLink;
 
+        # add the ticket ID of the first ticket
         push @TicketIDsToLink, $Return[1];
 
         # add the original follow up ID, if it was in a pool not addressed
@@ -631,7 +633,7 @@ sub Run {
         # add all tickets already linked
         my %LinkedTickets = $LinkObject->LinkKeyList(
             Object1 => 'Ticket',
-            Key1    => $TicketID,
+            Key1    => $Param{FollowUpTicketID} || $TicketID,
             Object2 => 'Ticket',
             State   => 'Valid',
             Type    => 'Interdivisional',
