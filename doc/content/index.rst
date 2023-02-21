@@ -29,7 +29,7 @@ Usage
 
 Details
 -------
-Address pools can be defined to define which email addresses and implicitely queues belong to one entity. Within those entities destination queues are determined as usual. Individual default queues can be provided. X-OTOBO-Queue and X-OTOBO-FollowUpQueue are only respected for articles created in the respective pool.
+Address pools can be defined to define which email addresses and implicitely queues belong to one entity, via PostMaster::AddressPool###Poolxy. Within those entities destination queues are determined as usual. Individual default queues can be provided. X-OTOBO-Queue and X-OTOBO-FollowUpQueue are only respected for articles created in the respective pool.
 
 Example:
 
