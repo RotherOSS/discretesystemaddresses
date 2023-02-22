@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <otobo_config version="2.0" init="Application">
+    <Setting Name="PostMaster::AddressPool::EmailHeaders" Required="1" Valid="1">
+        <Description Translatable="1">Email headers used for address-pool assignment. Secondary headers are not evaluated if pools could be assigned via the primary headers.</Description>
+        <Navigation>Core::Email::PostMaster</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Primary">
+                    <Array>
+                        <Item>Resent-To</Item>
+                        <Item>Envelope-To</Item>
+                        <Item>To</Item>
+                        <Item>Cc</Item>
+                    </Array>
+                </Item>
+                <Item Key="Secondary">
+                    <Array>
+                        <Item>Delivered-To</Item>
+                        <Item>X-Original-To</Item>
+                    </Array>
+                </Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="PostMaster::AddressPool###Pool01" Required="0" Valid="0">
         <Description Translatable="1">All email addresses which make up one pool. Queues are assigned implicitely. A default queue can be provided.</Description>
         <Navigation>Core::Email::PostMaster::AddressPool</Navigation>

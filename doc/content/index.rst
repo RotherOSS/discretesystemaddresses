@@ -46,6 +46,11 @@ Configuration Reference
 Core::Email::PostMaster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+PostMaster::AddressPool::EmailHeaders
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Email headers used for address-pool assignment. Secondary headers are not evaluated if pools could be assigned via the primary headers.
+
+
 PostMaster::PreFilterModule###000-SkipViaMessageID
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Module to check if an article with the corresponding message id already exists in the system. (E.g. if the mail was received and processed through a different email inbox.)

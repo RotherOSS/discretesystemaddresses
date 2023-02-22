@@ -76,13 +76,16 @@ sub FilterPools {
     }
 
     # get headers
-    my %GetParam = $Param{Params}->%*;
+    my %GetParam        = $Param{Params}->%*;
+    my $EmailHeader     = $Kernel::OM->Get('Kernel::Config')->Get('PostMaster::AddressPool::EmailHeaders');
+    my @PrimaryHeader   = @{ $EmailHeader->{Primary} || [] };
+    my @SecondaryHeader = @{ $EmailHeader->{Secondary} || [] };
 
     # check possible address headers
     my %PoolsSeen;
     my @Pools;
     HEADER:
-    for my $Header (qw(Resent-To Envelope-To To Cc)) {
+    for my $Header ( @PrimaryHeader ) {
 
         next HEADER if !$GetParam{$Header};
 
@@ -112,7 +115,7 @@ sub FilterPools {
 
     # if no pools are addressed in the above set of headers, also look for secondary ones
     HEADER:
-    for my $Header (qw(Delivered-To X-Original-To)) {
+    for my $Header ( @SecondaryHeader ) {
 
         next HEADER if !$GetParam{$Header};
 
