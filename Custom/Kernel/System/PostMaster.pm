@@ -4,6 +4,8 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
+# $origin: otobo - e894aef610208fdc401a4df814ca59658292fbba - Kernel/System/PostMaster.pm
+# --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
@@ -20,16 +22,13 @@ use strict;
 use warnings;
 
 use Kernel::System::EmailParser;
+# Rother OSS / DiscreteSystemAddresses
+use Kernel::System::PostMaster::AddressPool;
+# EO DiscreteSystemAddresses
 use Kernel::System::PostMaster::DestQueue;
 use Kernel::System::PostMaster::NewTicket;
 use Kernel::System::PostMaster::FollowUp;
 use Kernel::System::PostMaster::Reject;
-
-# Rother OSS / DiscreteSystemAddresses
-
-use Kernel::System::PostMaster::AddressPool;
-
-# EO DiscreteSystemAddresses
 
 use Kernel::System::VariableCheck qw(IsHashRefWithData);
 
@@ -40,18 +39,14 @@ our %ObjectManagerFlags = (
 our @ObjectDependencies = (
     'Kernel::Config',
     'Kernel::System::DynamicField',
+# Rother OSS / DiscreteSystemAddresses
+    'Kernel::System::LinkObject',
+    'Kernel::System::Log',
+# EO DiscreteSystemAddresses
     'Kernel::System::Main',
     'Kernel::System::Queue',
     'Kernel::System::State',
     'Kernel::System::Ticket',
-
-# Rother OSS / DiscreteSystemAddresses
-
-    'Kernel::System::Log',
-    'Kernel::System::LinkObject',
-
-# EO DiscreteSystemAddresses
-
     'Kernel::System::Ticket::Article',
 );
 
@@ -91,9 +86,7 @@ sub new {
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
 # Rother OSS / DiscreteSystemAddresses
-
     $Self->{OriginCommunicationLogObject} = $Self->{CommunicationLogObject};
-
 # EO DiscreteSystemAddresses
 
     $Self->{ParserObject} = Kernel::System::EmailParser->new(
@@ -101,12 +94,10 @@ sub new {
     );
 
 # Rother OSS / DiscreteSystemAddresses
-
     # create needed objects
     $Self->_CreateMailObjects(
         Data => $Self,
     );
-
 # EO DiscreteSystemAddresses
 
     # get config object

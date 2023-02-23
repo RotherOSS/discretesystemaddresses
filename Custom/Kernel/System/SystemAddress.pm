@@ -4,6 +4,8 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
+# $origin: otobo - e894aef610208fdc401a4df814ca59658292fbba - Kernel/System/SystemAddress.pm
+# --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
@@ -24,15 +26,11 @@ our @ObjectDependencies = (
     'Kernel::System::DB',
     'Kernel::System::Log',
     'Kernel::System::Valid',
-
 # Rother OSS / DiscreteSystemAddresses
-
     'Kernel::System::Queue',
     'Kernel::System::Ticket',
     'Kernel::System::PostMaster::AddressPool',
-
 # EO DiscreteSystemAddresses
-
 );
 
 =head1 NAME
@@ -359,13 +357,13 @@ sub SystemAddressList {
     return %List;
 }
 
-# Rother OSS / DiscreteSystemAddresses
-
 =head2 SystemAddressIsLocalAddress()
 
 Checks if the given address is a local (system) address. Returns true
 for local addresses.
 
+# Rother OSS / DiscreteSystemAddresses
+#    if ( $SystemAddressObject->SystemAddressIsLocalAddress( Address => 'info@example.com' ) ) {
     my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
         Address  => 'info@example.com',
         QueueID  => 4,                   # (optional)
@@ -373,6 +371,7 @@ for local addresses.
     );
 
     if ( $IsLocal ) {
+# EO DiscreteSystemAddresses
         # is local
     }
     else {
@@ -380,8 +379,6 @@ for local addresses.
     }
 
 =cut
-
-# EO DiscreteSystemAddresses
 
 sub SystemAddressIsLocalAddress {
     my ( $Self, %Param ) = @_;
@@ -398,7 +395,6 @@ sub SystemAddressIsLocalAddress {
     }
 
 # Rother OSS / DiscreteSystemAddresses
-
     # get objects
     my $QueueObject       = $Kernel::OM->Get('Kernel::System::Queue');
     my $TicketObject      = $Kernel::OM->Get('Kernel::System::Ticket');
@@ -433,7 +429,6 @@ sub SystemAddressIsLocalAddress {
 
         return $QueueExist;
     }
-
 # EO DiscreteSystemAddresses
 
     return $Self->SystemAddressQueueID(%Param);

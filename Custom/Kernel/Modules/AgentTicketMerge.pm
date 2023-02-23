@@ -4,6 +4,8 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
+# $origin: otobo - e894aef610208fdc401a4df814ca59658292fbba - Kernel/Modules/AgentTicketMerge.pm
+# --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
@@ -226,15 +228,16 @@ sub Run {
                     my $Address = $Email->address();
 
 # Rother OSS / DiscreteSystemAddresses
-
+#                    if (
+#                        $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress( Address => $Address )
+#                        )
                     my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                         Address  => $Address,
                         TicketID => $Self->{TicketID},
                     );
-                    if ($IsLocal) {
-
+                    if ($IsLocal)
 # EO DiscreteSystemAddresses
-
+                    {
                         $LayoutObject->Block( Name => 'ToCustomerGenericServerErrorMsg' );
                         $Error{'ToInvalid'} = 'ServerError';
                     }

@@ -4,6 +4,8 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
+# $origin: otobo - e894aef610208fdc401a4df814ca59658292fbba - Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm
+# --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
 # Foundation, either version 3 of the License, or (at your option) any later version.
@@ -176,16 +178,12 @@ sub GetConfig {
         for my $Address (@Addresses) {
             my $Email = $EmailParser->GetEmailAddress( Email => $Address );
             next ADDRESS if !$Email;
-
-# Rother OSS / DiscreteSystemAddresses
-
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
-                Address  => $Email,
+                Address => $Email,
+# Rother OSS / DiscreteSystemAddresses
                 TicketID => $Param{Ticket}->{TicketID},
-            );
-
 # EO DiscreteSystemAddresses
-
+            );
             next ADDRESS if $IsLocal;
             $RecipientCount++;
         }
