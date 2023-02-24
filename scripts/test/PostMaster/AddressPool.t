@@ -303,14 +303,14 @@ $Self->Is(
 # Test: ignore already received mails
 ( $Return, @TicketIDs ) = ReadEmail( $Email2 );
 
-# one ticket should be created
+# no ticket should be created
 $Self->Is(
     $Return,
     5,
     "Mail5 - mail ignored.",
 );
 
-# one ticket should be created
+# no ticket should be created
 $Self->Is(
     scalar @TicketIDs,
     0,
@@ -365,6 +365,67 @@ $Self->Is(
     "Mail6 - Queue of Ticket 2 is q5.",
 );
 
+# Test: Do not ignore mails sent from the system
+my $ArticleBackendObject = $Kernel::OM->Get('Kernel::System::Ticket::Article')->BackendForChannel(ChannelName => 'Email');
+$ArticleBackendObject->ArticleCreate(
+        TicketID             => $TestTickets[0]{TicketID},
+        SenderType           => 'agent',
+        IsVisibleForCustomer => 1,
+        UserID               => 1,
+        From           => '"P1" <a1p1@otobo.org>',
+        To             => '"P2" <a1p2@otobo.org>',
+        Subject        => 'some short description',
+        Body           => 'the message text',
+        MessageID      => '<20230214002814.AddressPools7@test>',
+        ContentType    => 'text/plain; charset=ISO-8859-15',
+        HistoryType    => 'AddNote',
+        HistoryComment => 'Some free text!',
+        NoAgentNotify  => 1,
+);
+
+$NewSubject = $TicketObject->TicketSubjectBuild(
+    TicketNumber => $TestTickets[0]{TicketNumber},
+    Subject      => 'some short description',
+    Action       => 'Reply',
+);
+
+$Email = GenerateEmail(
+    To        => 'a1p2@otobo.org',
+    Subject   => $NewSubject,
+    MessageID => '<20230214002814.AddressPools7@test>',
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# one article should be created
+$Self->Is(
+    scalar @TicketIDs,
+    1,
+    "Mail7 - one article.",
+);
+
+# ticket 1 should be ticket 2 of the first email
+$Self->Is(
+    $TicketIDs[0],
+    $TestTickets[1]{TicketID},
+    "Mail7 - Ticket1 is old Ticket2.",
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email );
+
+# on second round though, mail should be ignored
+$Self->Is(
+    $Return,
+    5,
+    "Mail7.5 - mail ignored.",
+);
+
+# no ticket should be created
+$Self->Is(
+    scalar @TicketIDs,
+    0,
+    "Mail7.5 - no article.",
+);
 
 # cleanup is done by RestoreDatabase.
 $Self->DoneTesting();

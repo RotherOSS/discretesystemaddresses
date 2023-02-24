@@ -141,12 +141,20 @@ sub ArticleGetByMessageID {
 #       );
 #       return;
 #   }
-    $Param{AmbiguousMessageID} = $Count-1;
-# EO DiscreteSystemAddresses
-
-    return $Self->ArticleGet(
+#
+#    return $Self->ArticleGet(
+#        %Param,
+#    );
+    my %Article = $Self->ArticleGet(
         %Param,
     );
+
+    if ( $Count > 1 ) {
+        $Article{AmbiguousMessageID} = 1;
+    }
+
+    return %Article;
+# EO DiscreteSystemAddresses
 }
 
 =head2 ArticleSend()
