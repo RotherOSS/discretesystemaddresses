@@ -158,7 +158,7 @@ my $Email = GenerateEmail(
     MessageID => '<20230214002814.AddressPools1@test>',
 );
 
-my ( $Return, @TicketIDs ) = ReadEmail( $Email );
+my ( $Return, @TicketIDs ) = ReadEmail( $Email, 1 );
 
 # two tickets should be created...
 $Self->Is(
@@ -518,7 +518,7 @@ sub ReadEmail {
             },
         );
 
-        @Return = $PostMasterObject->Run();
+        @Return = $PostMasterObject->Run( QueueID => $_[1] );
 
         if ( !$Return[0] ) {
 
