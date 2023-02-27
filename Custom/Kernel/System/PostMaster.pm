@@ -266,6 +266,10 @@ sub Run {
         );
 
         if ( @AddressedPools ) {
+            # dispatching via queue is not compatible with addressing multi pools atm
+            delete $Param{Queue};
+            delete $Param{QueueID};
+
             if ( $TicketID ) {
                 my $Pool = $Self->{AddressPoolObject}->PoolLookup(
                     TicketID => $TicketID,
