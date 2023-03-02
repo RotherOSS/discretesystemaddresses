@@ -53,7 +53,7 @@ sub Run {
 
     my $MessageID = $Param{GetParam}->{'Message-ID'};
 
-    return if !$MessageID;
+    return 1 if !$MessageID;
 
     $Self->_AddCommunicationLog(
         Message => sprintf(
