@@ -65,7 +65,7 @@ FixedTimeSet();
 
 # add system addresses
 my %SystemAddressIDs;
-for my $Address ( qw/a1p1@otobo.org a1p2@otobo.org a1p3@otobo.org a2p2@otobo.org unused@otobo.org/ ) {
+for my $Address ( qw/a1P1@otobo.org a1p2@otoBo.org a1p3@otobo.org a2p2@otobo.org unused@otobo.org/ ) {
     my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
         Name     => $Address,
         Realname => 'APTest',
@@ -78,8 +78,8 @@ for my $Address ( qw/a1p1@otobo.org a1p2@otobo.org a1p3@otobo.org a2p2@otobo.org
 }
 
 my %QueueAddresses = (
-    q1 => 'a1p1@otobo.org',
-    q2 => 'a1p2@otobo.org',
+    q1 => 'a1P1@otobo.org',
+    q2 => 'a1p2@otoBo.org',
     q3 => 'a1p3@otobo.org',
     q4 => 'unused@otobo.org',
     q5 => 'a2p2@otobo.org',
@@ -135,8 +135,8 @@ for my $Queue ( keys %QueueAddresses ) {
         Pool03 => {
             Name   => 'P3',
             Emails => [
-                'a1p3@otobo.org',
-                'a2p3@otobo.org',
+                'A1p3@otobo.org',
+                'A2p3@otobo.org',
             ],
             DefaultQueue => 'q3',
         },
@@ -153,7 +153,7 @@ for my $Queue ( keys %QueueAddresses ) {
 
 # Test: Ticket#x in q1 (ignore defqueue of a2p1), Ticket#y in q2, nothing in q5
 my $Email = GenerateEmail(
-    To        => 'a2p1@otobo.org, a1p1@otobo.org, a1p2@otobo.org, not@ours.com',
+    To        => 'a2p1@otobo.orG, a1p1@otobo.orG, a1p2@otobo.orG, not@ours.com',
     Subject   => 'Initial',
     MessageID => '<20230214002814.AddressPools1@test>',
 );
@@ -207,7 +207,7 @@ my $NewSubject = $TicketObject->TicketSubjectBuild(
 );
 
 $Email = GenerateEmail(
-    To        => 'a1p2@otobo.org, a2p3@otobo.org',
+    To        => 'a1p2@oTobo.org, a2p3@otobo.orG',
     Subject   => $NewSubject,
     MessageID => '<20230214002814.AddressPools2@test>',
 );

@@ -183,7 +183,7 @@ sub AddressList {
         next POOL if !$PoolConfigs->{ $Pool }{Emails};
 
         for my $Address ( $PoolConfigs->{ $Pool }{Emails}->@* ) {
-            $Self->{AddressToPool}{ $Address } = $Pool;
+            $Self->{AddressToPool}{ lc( $Address ) } = $Pool;
         }
     }
 
@@ -223,7 +223,7 @@ sub PoolLookup {
     # get address pool name list
     my %AddressToPool = $Self->AddressList();
 
-    return $AddressToPool{ $Param{Address} } if $Param{Address};
+    return $AddressToPool{ lc( $Param{Address} ) } if $Param{Address};
 
     # get objects
     my $QueueObject  = $Kernel::OM->Get('Kernel::System::Queue');
@@ -241,7 +241,7 @@ sub PoolLookup {
 
     return if !$QueueData{Email};
 
-    return $AddressToPool{ $QueueData{Email} };
+    return $AddressToPool{ lc( $QueueData{Email} ) };
 }
 
 =head2 QueueCheck()
