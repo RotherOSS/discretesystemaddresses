@@ -427,6 +427,43 @@ $Self->Is(
     "Mail7.5 - no article.",
 );
 
+# Test: Dispatching via Queue
+$Email = GenerateEmail(
+    To        => 'a1p1@otobo.org',
+    Subject   => 'New',
+    MessageID => '<20230214002814.AddressPools8@test>',
+);
+
+( $Return, @TicketIDs ) = ReadEmail( $Email, $QueueIDs{q2} );
+
+# two tickets should be created...
+$Self->Is(
+    scalar @TicketIDs,
+    2,
+    "Mail8 - create two tickets.",
+);
+
+my @Test8Tickets;
+for my $ID ( @TicketIDs ) {
+    push @Test8Tickets, {
+        $TicketObject->TicketGet( TicketID => $ID )
+    };
+}
+
+# ticket 1 should be in q2
+$Self->Is(
+    $Test8Tickets[0]{Queue} // '',
+    'q2',
+    "Mail8 - Ticket1 is in q2.",
+);
+
+# ticket 2 should be in q1
+$Self->Is(
+    $Test8Tickets[1]{Queue} // '',
+    'q1',
+    "Mail8 - Ticket2 is in q1.",
+);
+
 # cleanup is done by RestoreDatabase.
 $Self->DoneTesting();
 

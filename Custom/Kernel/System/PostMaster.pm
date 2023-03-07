@@ -266,10 +266,28 @@ sub Run {
         );
 
         if ( @AddressedPools ) {
-            # dispatching via queue is not compatible with addressing multi pools atm
-            delete $Param{Queue};
-            delete $Param{QueueID};
+            # get the Pool for QueueID from MailAccount, in case of dispatching via Queue
+            my $MailAccountPool;
+            if ( $Param{QueueID} || $Param{Queue} ) {
+                my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
 
+                $Param{QueueID}      ||= $QueueObject->QueueLookup(
+                    Queue   => $Param{Queue},
+                );
+                my %MailAccountAddress = $QueueObject->GetSystemAddress(
+                    QueueID => $Param{QueueID},
+                );
+                $MailAccountPool       = $Self->{AddressPoolObject}->PoolLookup(
+                    Address => $MailAccountAddress{Email},
+                );
+
+                # add the Pool, if not addressed
+                if ( $MailAccountPool && ( !grep { $_ eq $MailAccountPool } @AddressedPools ) ) {
+                    unshift @AddressedPools, $MailAccountPool;
+                }
+            }
+
+            # for follow-ups
             if ( $TicketID ) {
                 my $Pool = $Self->{AddressPoolObject}->PoolLookup(
                     TicketID => $TicketID,
@@ -304,9 +322,17 @@ sub Run {
                     EmailParams      => \%EmailParams,
                     AddressPool      => $Pool,
                     FollowUpTicketID => $TicketID,
+                    QueueID          =>
+                        ( $MailAccountPool && $MailAccountPool eq $Pool ) ? $Param{QueueID} : undef,
                 );
 
                 push @TicketIDsToLink, $RecuTicketID;
+            }
+
+            # take queue by mail account only into consideration for its respective pool
+            if ( !$MailAccountPool || $MailAccountPool ne $Param{AddressPool} ) {
+                delete $Param{Queue};
+                delete $Param{QueueID};
             }
 
             # set communication log to origin
