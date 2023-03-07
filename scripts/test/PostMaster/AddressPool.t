@@ -464,6 +464,29 @@ $Self->Is(
     "Mail8 - Ticket2 is in q1.",
 );
 
+# Test: Dispatching via Queue second round
+( $Return, @TicketIDs ) = ReadEmail( $Email, $QueueIDs{q3} );
+
+# one additional ticket should be created...
+$Self->Is(
+    scalar @TicketIDs,
+    1,
+    "Mail8.5 - one ticket.",
+);
+
+my ( $LinkedTicketNumber, $LinkedTicketID ) = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool')->FindLinkedTicket(
+    TicketID    => $TicketIDs[0],
+    AddressPool => 'P2',
+    UserID      => 1,
+);
+
+# ...and be linked to the former ones
+$Self->Is(
+    $LinkedTicketID,
+    $Test8Tickets[0]{TicketID},
+    "Mail8.5 - correctly linked.",
+);
+
 # cleanup is done by RestoreDatabase.
 $Self->DoneTesting();
 
