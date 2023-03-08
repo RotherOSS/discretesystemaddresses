@@ -97,7 +97,6 @@ sub ArticleGetByMessageID {
     # Get ticket and article ID from meta article table.
 
 # Rother OSS / DiscreteSystemAddresses
-
 #   return if !$DBObject->Prepare(
 #       SQL => '
 #           SELECT sa.id, sa.ticket_id FROM article sa
@@ -107,6 +106,16 @@ sub ArticleGetByMessageID {
 #       Bind  => [ \$MD5 ],
 #       Limit => 10,
 #   );
+#
+#    my $Count = 0;
+#    while ( my @Row = $DBObject->FetchrowArray() ) {
+#        $Param{ArticleID} = $Row[0];
+#        $Param{TicketID}  = $Row[1];
+#        $Count++;
+#    }
+#
+#    # No reference found.
+#    return if $Count == 0;
     return if !$DBObject->Prepare(
         SQL => '
             SELECT sa.id, sa.ticket_id FROM article sa
@@ -115,20 +124,18 @@ sub ArticleGetByMessageID {
             ORDER BY sa.id DESC
         ',
         Bind  => [ \$MD5 ],
-        Limit => 2,
     );
 
-# EO DiscreteSystemAddresses
-
-    my $Count = 0;
+    my @TicketIDs;
     while ( my @Row = $DBObject->FetchrowArray() ) {
-        $Param{ArticleID} = $Row[0];
-        $Param{TicketID}  = $Row[1];
-        $Count++;
+        $Param{ArticleID} //= $Row[0];
+        $Param{TicketID}  //= $Row[1];
+        push @TicketIDs, $Row[1];
     }
 
     # No reference found.
-    return if $Count == 0;
+    return if !@TicketIDs;
+# EO DiscreteSystemAddresses
     return if !$Param{TicketID} || !$Param{ArticleID};
 
 # Rother OSS / DiscreteSystemAddresses
@@ -149,8 +156,8 @@ sub ArticleGetByMessageID {
         %Param,
     );
 
-    if ( $Count > 1 ) {
-        $Article{AmbiguousMessageID} = 1;
+    if ( scalar @TicketIDs > 1 ) {
+        $Article{AmbiguousTicketIDs} = \@TicketIDs;
     }
 
     return %Article;

@@ -394,11 +394,16 @@
         </Value>
     </Setting>
     <Setting Name="PostMaster::PreFilterModule###000-SkipViaMessageID" Required="0" Valid="1">
-        <Description Translatable="1">Module to check if an article with the corresponding message id already exists in the system. (E.g. if the mail was received and processed through a different email inbox.)</Description>
+        <Description Translatable="1">Module to check if an article with the corresponding message id already exists in the system. (E.g. if the mail was received and processed through a different email inbox.) Multiple parsing can be allowed. Pools which already contain an article with the respective message id will still be ignored. Options are "Always", "BouncedEmail" (multiple parsing will only be done for Emails with "Resent-To"-header, e.g. PoolA bounced a mail to PoolB) and "MailAccountQueue" (if dispatching via queue is enabled for a mail account, an email can be moved to the respective inbox, to be evaluated again).</Description>
         <Navigation>Core::Email::PostMaster</Navigation>
         <Value>
             <Hash>
                 <Item Key="Module">Kernel::System::PostMaster::Filter::SkipViaMessageID</Item>
+                <Item Key="AllowMultiParse">
+                    <Item Key="Always">0</Item>
+                    <Item Key="MailAccountQueue">1</Item>
+                    <Item Key="BouncedEmail">1</Item>
+                </Item>
             </Hash>
         </Value>
     </Setting>

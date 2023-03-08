@@ -66,32 +66,86 @@ sub Run {
         MessageID => $MessageID,
     );
 
-    if ( %Article ) {
-        # if an article is found, still it could be created and sent by OTOBO
+    return 1 if !%Article;
+
+    if ( !$Article{AmbiguousTicketIDs} ) {
         my ( $SenderEmail ) = Mail::Address->parse( $Article{From} );
 
         my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
             Address => $SenderEmail->address(),
         );
 
-        # if multiple articles exist, or the article is from an external sender, it has already been processed though, and we have to skip
-        if ( $Article{AmbiguousMessageID} || !$IsLocal ) {
-            $Self->_AddCommunicationLog(
-                Message => sprintf(
-                    'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
-                    $MessageID,
-                ),
-            );
-            $Param{GetParam}->{'X-OTOBO-Ignore'} = 'yes';
-        }
-        else {
+        # if we are reading a message sent via our OTOBO itself for the first time
+        if ( $IsLocal ) {
             $Self->_AddCommunicationLog(
                 Message => sprintf(
                     'Email with message id "%s" was sent as new article from a local address.',
                     $MessageID,
                 ),
             );
+
+            return 1;
         }
+    }
+
+    if ( !$Param{JobConfig} || !$Param{JobConfig}{AllowMultiParse} ) {
+        $Self->_AddCommunicationLog(
+            Message => sprintf(
+                'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
+                $MessageID,
+            ),
+        );
+        $Param{GetParam}{'X-OTOBO-Ignore'} = 'yes';
+
+        return 1;
+    }
+
+    my $MultiParse = $Param{JobConfig}{AllowMultiParse}{Always} ? 1 : 0;
+
+    if ( !$MultiParse && $Param{JobConfig}{AllowMultiParse}{MailAccountQueue} && $Param{QueueID} ) {
+        $Self->_AddCommunicationLog(
+            Message => sprintf(
+                'Article with message id "%s" already exists, parse again as explicit QueueID is provided.',
+                $MessageID,
+            ),
+        );
+
+        $MultiParse = 1;
+    }
+
+    if ( !$MultiParse && $Param{JobConfig}{AllowMultiParse}{BouncedEmail} && $Param{GetParam}{'Resent-To'} ) {
+        $Self->_AddCommunicationLog(
+            Message => sprintf(
+                'Article with message id "%s" already exists, parse again as email was bounced.',
+                $MessageID,
+            ),
+        );
+
+        $MultiParse = 1;
+    }
+
+    if ( !$MultiParse ) {
+        $Self->_AddCommunicationLog(
+            Message => sprintf(
+                'Article with message id "%s" already exists, setting X-OTOBO-Ignore.',
+                $MessageID,
+            ),
+        );
+        $Param{GetParam}{'X-OTOBO-Ignore'} = 'yes';
+
+        return 1;
+    }
+
+    my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
+    TICKETID:
+    for my $TicketID ( $Article{AmbiguousTicketIDs}->@* ) {
+        my $Pool = $AddressPoolObject->PoolLookup(
+            TicketID => $TicketID,
+        );
+
+        next TICKETID if !$Pool;
+
+        $Param{GetParam}{IgnoreAddressPools}{ $Pool } = 1;
     }
 
     return 1;

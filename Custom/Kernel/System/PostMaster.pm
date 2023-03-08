@@ -226,6 +226,9 @@ sub Run {
                     JobConfig => $Jobs{$Job},
                     TicketID  => $TicketID,
                     UserID    => $Self->{PostmasterUserID},
+# Rother OSS / DiscreteSystemAddresses
+                    QueueID   => $Param{QueueID},
+# EO DiscreteSystemAddresses
                 );
                 if ( !$Run ) {
                     $Self->{CommunicationLogObject}->ObjectLog(
