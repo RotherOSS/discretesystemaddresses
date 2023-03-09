@@ -275,6 +275,24 @@ $Self->Is(
     "Mail3 - Ticket1 has 2 articles.",
 );
 
+# clean all Ticketnumbers
+my $CleanedSubject = $TicketObject->TicketSubjectClean(
+    TicketNumber => $TestTickets[0]{TicketNumber},
+    Subject      => ''
+        . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . $TestTickets[0]{TicketNumber} . ']'
+        . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . $TestTickets[1]{TicketNumber} . ']'
+        . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . $TestTickets[2]{TicketNumber} . ']'
+        . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . '20030301123412340001] Test',
+    Size         => 0,
+);
+
+# all linked ticket numbers are cleaned
+$Self->Is(
+    $CleanedSubject,
+    '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . '20030301123412340001] Test',
+    "TicketSubjectClean includes interdiv ticket numbers.",
+);
+
 # Test: standard case
 $Email = GenerateEmail(
     To        => 'ax@otobo.org',
