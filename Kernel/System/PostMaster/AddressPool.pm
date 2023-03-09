@@ -340,8 +340,8 @@ sub FindLinkedTicket {
     for my $LinkedTicket ( keys %LinkedTickets ) {
 
         # get ticket number / ticket id
-        my $LTTicketID     = $LinkedTickets{$LinkedTicket}{TicketID};
-        my $LTTicketNumber = $LinkedTickets{$LinkedTicket}{TicketNumber};
+        my $LTTicketID     = $LinkedTickets{ $LinkedTicket }{TicketID};
+        my $LTTicketNumber = $LinkedTickets{ $LinkedTicket }{TicketNumber};
 
         my $LTPool = $Self->PoolLookup(
             TicketID => $LTTicketID,

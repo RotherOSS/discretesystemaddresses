@@ -400,9 +400,11 @@
             <Hash>
                 <Item Key="Module">Kernel::System::PostMaster::Filter::SkipViaMessageID</Item>
                 <Item Key="AllowMultiParse">
-                    <Item Key="Always">0</Item>
-                    <Item Key="MailAccountQueue">1</Item>
-                    <Item Key="BouncedEmail">1</Item>
+                    <Hash>
+                        <Item Key="Always">0</Item>
+                        <Item Key="MailAccountQueue">1</Item>
+                        <Item Key="BouncedEmail">1</Item>
+                    </Hash>
                 </Item>
             </Hash>
         </Value>

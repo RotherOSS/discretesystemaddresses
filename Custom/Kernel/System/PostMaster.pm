@@ -290,6 +290,24 @@ sub Run {
                 }
             }
 
+            # if we are reprocessing an email filter out pools which already have an article with this message id
+            if ( $GetParam->{IgnoreAddressPools} ) {
+                @AddressedPools = grep { !$GetParam->{IgnoreAddressPools}{$_} } @AddressedPools;
+
+                if ( !@AddressedPools ) {
+                    $Self->{CommunicationLogObject}->ObjectLog(
+                        ObjectLogType => 'Message',
+                        Priority      => 'Info',
+                        Key           => 'Kernel::System::PostMaster',
+                        Value         =>
+                            "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
+                            . "because all addressed pools already hold an article for it.",
+                    );
+
+                    return (5);
+                }
+            }
+
             # for follow-ups
             if ( $TicketID ) {
                 my $Pool = $Self->{AddressPoolObject}->PoolLookup(
@@ -639,9 +657,9 @@ sub Run {
     }
 
 # Rother OSS / DiscreteSystemAddresses
-
     # create link of type 'Interdivisional' to tickets
-    if ( @TicketIDsToLink || $Param{FollowUpTicketID} ) {
+    if ( $Param{AddressPool} 
+        && ( @TicketIDsToLink || $Param{FollowUpTicketID} || $GetParam->{IgnoreAddressPools} ) ) {
 
         # add all ticket ids to the return - mainly used for unit tests
         push @Return, @TicketIDsToLink;
@@ -652,6 +670,11 @@ sub Run {
         # add the original follow up ID, if it was in a pool not addressed
         if ( $Param{FollowUpTicketID} ) {
             push @TicketIDsToLink, $Param{FollowUpTicketID};
+        }
+
+        # if this is an email parsed an additional time, link all previously created tickets
+        if ( $GetParam->{IgnoreAddressPools} ) {
+            push @TicketIDsToLink, ( values $GetParam->{IgnoreAddressPools}->%* );
         }
 
         # add all tickets already linked
@@ -671,7 +694,6 @@ sub Run {
             UserID    => $Self->{PostmasterUserID},
         );
     }
-
 # EO DiscreteSystemAddresses
 
     return @Return;

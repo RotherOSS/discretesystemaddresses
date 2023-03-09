@@ -145,7 +145,7 @@ sub Run {
 
         next TICKETID if !$Pool;
 
-        $Param{GetParam}{IgnoreAddressPools}{ $Pool } = 1;
+        $Param{GetParam}{IgnoreAddressPools}{ $Pool } = $TicketID;
     }
 
     return 1;

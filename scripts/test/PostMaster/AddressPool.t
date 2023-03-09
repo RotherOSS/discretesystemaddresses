@@ -476,7 +476,7 @@ $Self->Is(
 
 my ( $LinkedTicketNumber, $LinkedTicketID ) = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool')->FindLinkedTicket(
     TicketID    => $TicketIDs[0],
-    AddressPool => 'P2',
+    AddressPool => 'Pool02',
     UserID      => 1,
 );
 
@@ -485,6 +485,23 @@ $Self->Is(
     $LinkedTicketID,
     $Test8Tickets[0]{TicketID},
     "Mail8.5 - correctly linked.",
+);
+
+# Test: Dispatching via Queue third time unlucky
+( $Return, @TicketIDs ) = ReadEmail( $Email, $QueueIDs{q3} );
+
+# on third round though, mail should be ignored, as all pools are full
+$Self->Is(
+    $Return,
+    5,
+    "Mail8.6 - mail ignored.",
+);
+
+# no ticket should be created
+$Self->Is(
+    scalar @TicketIDs,
+    0,
+    "Mail8.6 - no article.",
 );
 
 # cleanup is done by RestoreDatabase.
