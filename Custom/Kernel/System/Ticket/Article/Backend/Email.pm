@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
-# $origin: otobo - e3ec3a07586bcf447c914ecc925f2a853d8cb48e - Kernel/System/Ticket/Article/Backend/Email.pm
+# $origin: otobo - a077e914380d1a13d5aa31472ea687353b614622 - Kernel/System/Ticket/Article/Backend/Email.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software

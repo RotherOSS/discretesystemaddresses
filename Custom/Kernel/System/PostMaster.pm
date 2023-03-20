@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
 # --
-# $origin: otobo - e894aef610208fdc401a4df814ca59658292fbba - Kernel/System/PostMaster.pm
+# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/System/PostMaster.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -93,8 +93,12 @@ sub new {
         Email => $Param{Email},
     );
 
-# Rother OSS / DiscreteSystemAddresses
     # create needed objects
+# Rother OSS / DiscreteSystemAddresses
+#    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
+#    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
+#    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
+#    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
     $Self->_CreateMailObjects(
         Data => $Self,
     );
