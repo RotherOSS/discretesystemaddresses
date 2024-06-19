@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/System/PostMaster.pm
 # --
@@ -662,7 +662,7 @@ sub Run {
 
 # Rother OSS / DiscreteSystemAddresses
     # create link of type 'Interdivisional' to tickets
-    if ( $Param{AddressPool} 
+    if ( $Param{AddressPool}
         && ( @TicketIDsToLink || $Param{FollowUpTicketID} || $GetParam->{IgnoreAddressPools} ) ) {
 
         # add all ticket ids to the return - mainly used for unit tests

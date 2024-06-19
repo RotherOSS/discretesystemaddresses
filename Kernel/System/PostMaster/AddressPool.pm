@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -78,14 +78,14 @@ sub FilterPools {
     # get headers
     my %GetParam        = $Param{Params}->%*;
     my $EmailHeader     = $Kernel::OM->Get('Kernel::Config')->Get('PostMaster::AddressPool::EmailHeaders');
-    my @PrimaryHeader   = @{ $EmailHeader->{Primary} || [] };
+    my @PrimaryHeader   = @{ $EmailHeader->{Primary}   || [] };
     my @SecondaryHeader = @{ $EmailHeader->{Secondary} || [] };
 
     # check possible address headers
     my %PoolsSeen;
     my @Pools;
     HEADER:
-    for my $Header ( @PrimaryHeader ) {
+    for my $Header (@PrimaryHeader) {
 
         next HEADER if !$GetParam{$Header};
 
@@ -105,7 +105,7 @@ sub FilterPools {
 
             next EMAIL if !$AddressPool;
 
-            next EMAIL if $PoolsSeen{ $AddressPool }++;
+            next EMAIL if $PoolsSeen{$AddressPool}++;
 
             push @Pools, $AddressPool;
         }
@@ -115,7 +115,7 @@ sub FilterPools {
 
     # if no pools are addressed in the above set of headers, also look for secondary ones
     HEADER:
-    for my $Header ( @SecondaryHeader ) {
+    for my $Header (@SecondaryHeader) {
 
         next HEADER if !$GetParam{$Header};
 
@@ -135,7 +135,7 @@ sub FilterPools {
 
             next EMAIL if !$AddressPool;
 
-            next EMAIL if $PoolsSeen{ $AddressPool }++;
+            next EMAIL if $PoolsSeen{$AddressPool}++;
 
             push @Pools, $AddressPool;
         }
@@ -146,6 +146,7 @@ sub FilterPools {
 
 =head2 AddressList()
 
+=for stopwords addresspools
 Get all addresses defined in addresspools
 
     my %AddressToPool = $AddressPoolObject->AddressList();
@@ -167,7 +168,7 @@ sub AddressList {
     return $Self->{AddressToPool}->%* if $Self->{AddressToPool};
 
     $Self->{AddressToPool} = {};
-    my $PoolConfigs        = $Kernel::OM->Get('Kernel::Config')->Get('PostMaster::AddressPool');
+    my $PoolConfigs = $Kernel::OM->Get('Kernel::Config')->Get('PostMaster::AddressPool');
 
     if ( !$PoolConfigs ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
@@ -180,10 +181,10 @@ sub AddressList {
 
     POOL:
     for my $Pool ( keys $PoolConfigs->%* ) {
-        next POOL if !$PoolConfigs->{ $Pool }{Emails};
+        next POOL if !$PoolConfigs->{$Pool}{Emails};
 
-        for my $Address ( $PoolConfigs->{ $Pool }{Emails}->@* ) {
-            $Self->{AddressToPool}{ lc( $Address ) } = $Pool;
+        for my $Address ( $PoolConfigs->{$Pool}{Emails}->@* ) {
+            $Self->{AddressToPool}{ lc($Address) } = $Pool;
         }
     }
 
@@ -194,11 +195,11 @@ sub AddressList {
 
 Get address pool by address or ticket id
 
-    my $PoolName = $AddressPoolObject->NameLookup(
+    my $PoolName = $AddressPoolObject->PoolLookup(
         Address  => 'test1@example.com',
     );
 
-    my $PoolName = $AddressPoolObject->NameLookup(
+    my $PoolName = $AddressPoolObject->PoolLookup(
         TicketID => 4,
     );
 
@@ -340,8 +341,8 @@ sub FindLinkedTicket {
     for my $LinkedTicket ( keys %LinkedTickets ) {
 
         # get ticket number / ticket id
-        my $LTTicketID     = $LinkedTickets{ $LinkedTicket }{TicketID};
-        my $LTTicketNumber = $LinkedTickets{ $LinkedTicket }{TicketNumber};
+        my $LTTicketID     = $LinkedTickets{$LinkedTicket}{TicketID};
+        my $LTTicketNumber = $LinkedTickets{$LinkedTicket}{TicketNumber};
 
         my $LTPool = $Self->PoolLookup(
             TicketID => $LTTicketID,
@@ -392,7 +393,7 @@ sub InterdivisionalTicketLinkAdd {
     my %Seen;
     ID:
     for my $ID ( $Param{TicketIDs}->@* ) {
-        next ID if $Seen{ $ID }++;
+        next ID if $Seen{$ID}++;
 
         push @TicketIDs, $ID;
     }

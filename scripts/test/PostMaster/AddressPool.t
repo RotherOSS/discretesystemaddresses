@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -22,7 +22,7 @@ use utf8;
 use Kernel::System::UnitTest::MockTime qw(:all);
 use Kernel::System::UnitTest::RegisterDriver;
 
-use vars (qw($Self));
+our $Self;
 
 use Kernel::System::PostMaster;
 
@@ -65,7 +65,7 @@ FixedTimeSet();
 
 # add system addresses
 my %SystemAddressIDs;
-for my $Address ( qw/a1P1@otobo.org a1p2@otoBo.org a1p3@otobo.org a2p2@otobo.org unused@otobo.org/ ) {
+for my $Address (qw/a1P1@otobo.org a1p2@otoBo.org a1p3@otobo.org a2p2@otobo.org unused@otobo.org/) {
     my $SystemAddressID = $SystemAddressObject->SystemAddressAdd(
         Name     => $Address,
         Realname => 'APTest',
@@ -74,7 +74,7 @@ for my $Address ( qw/a1P1@otobo.org a1p2@otoBo.org a1p3@otobo.org a2p2@otobo.org
         UserID   => 1,
     );
 
-    $SystemAddressIDs{ $Address } = $SystemAddressID;
+    $SystemAddressIDs{$Address} = $SystemAddressID;
 }
 
 my %QueueAddresses = (
@@ -92,24 +92,24 @@ for my $Queue ( keys %QueueAddresses ) {
         Name            => $Queue,
         ValidID         => 1,
         GroupID         => 1,
-        SystemAddressID => $SystemAddressIDs{ $QueueAddresses{ $Queue } },
+        SystemAddressID => $SystemAddressIDs{ $QueueAddresses{$Queue} },
         SalutationID    => 1,
         SignatureID     => 1,
         UserID          => 1,
     );
 
-    $QueueIDs{ $Queue } = $QueueID;
+    $QueueIDs{$Queue} = $QueueID;
 
     # update system address
     my %SystemAddressData = $SystemAddressObject->SystemAddressGet(
-        ID => $SystemAddressIDs{ $QueueAddresses{ $Queue } },
+        ID => $SystemAddressIDs{ $QueueAddresses{$Queue} },
     );
 
     $SystemAddressData{QueueID} = $QueueID;
 
     $SystemAddressObject->SystemAddressUpdate(
         %SystemAddressData,
-        UserID   => 1,
+        UserID => 1,
     );
 }
 
@@ -168,7 +168,7 @@ $Self->Is(
 );
 
 my @TestTickets;
-for my $ID ( @TicketIDs ) {
+for my $ID (@TicketIDs) {
     push @TestTickets, {
         $TicketObject->TicketGet( TicketID => $ID )
     };
@@ -212,7 +212,7 @@ $Email = GenerateEmail(
     MessageID => '<20230214002814.AddressPools2@test>',
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # two articles should be created...
 $Self->Is(
@@ -255,7 +255,7 @@ $Email = GenerateEmail(
     MessageID => '<20230214002814.AddressPools3@test>',
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # ticket 1 should be ticket 1 of the first email
 $Self->Is(
@@ -283,7 +283,7 @@ my $CleanedSubject = $TicketObject->TicketSubjectClean(
         . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . $TestTickets[1]{TicketNumber} . ']'
         . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . $TestTickets[2]{TicketNumber} . ']'
         . '[' . $ConfigObject->Get('Ticket::Hook') . $ConfigObject->Get('Ticket::HookDivider') . '20030301123412340001] Test',
-    Size         => 0,
+    Size => 0,
 );
 
 # all linked ticket numbers are cleaned
@@ -300,7 +300,7 @@ $Email = GenerateEmail(
     MessageID => '<20230214002814.AddressPools4@test>',
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # one ticket should be created
 $Self->Is(
@@ -319,7 +319,7 @@ $Self->Is(
 );
 
 # Test: ignore already received mails
-( $Return, @TicketIDs ) = ReadEmail( $Email2 );
+( $Return, @TicketIDs ) = ReadEmail($Email2);
 
 # no ticket should be created
 $Self->Is(
@@ -349,7 +349,7 @@ $Email = GenerateEmail(
     XHeader   => "\nX-OTOBO-FollowUp-Queue: q5",
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # ticket 1 should be ticket 1 of the first email
 $Self->Is(
@@ -384,21 +384,21 @@ $Self->Is(
 );
 
 # Test: Do not ignore mails sent from the system
-my $ArticleBackendObject = $Kernel::OM->Get('Kernel::System::Ticket::Article')->BackendForChannel(ChannelName => 'Email');
+my $ArticleBackendObject = $Kernel::OM->Get('Kernel::System::Ticket::Article')->BackendForChannel( ChannelName => 'Email' );
 $ArticleBackendObject->ArticleCreate(
-        TicketID             => $TestTickets[0]{TicketID},
-        SenderType           => 'agent',
-        IsVisibleForCustomer => 1,
-        UserID               => 1,
-        From           => '"P1" <a1p1@otobo.org>',
-        To             => '"P2" <a1p2@otobo.org>',
-        Subject        => 'some short description',
-        Body           => 'the message text',
-        MessageID      => '<20230214002814.AddressPools7@test>',
-        ContentType    => 'text/plain; charset=ISO-8859-15',
-        HistoryType    => 'AddNote',
-        HistoryComment => 'Some free text!',
-        NoAgentNotify  => 1,
+    TicketID             => $TestTickets[0]{TicketID},
+    SenderType           => 'agent',
+    IsVisibleForCustomer => 1,
+    UserID               => 1,
+    From                 => '"P1" <a1p1@otobo.org>',
+    To                   => '"P2" <a1p2@otobo.org>',
+    Subject              => 'some short description',
+    Body                 => 'the message text',
+    MessageID            => '<20230214002814.AddressPools7@test>',
+    ContentType          => 'text/plain; charset=ISO-8859-15',
+    HistoryType          => 'AddNote',
+    HistoryComment       => 'Some free text!',
+    NoAgentNotify        => 1,
 );
 
 $NewSubject = $TicketObject->TicketSubjectBuild(
@@ -413,7 +413,7 @@ $Email = GenerateEmail(
     MessageID => '<20230214002814.AddressPools7@test>',
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # one article should be created
 $Self->Is(
@@ -429,7 +429,7 @@ $Self->Is(
     "Mail7 - Ticket1 is old Ticket2.",
 );
 
-( $Return, @TicketIDs ) = ReadEmail( $Email );
+( $Return, @TicketIDs ) = ReadEmail($Email);
 
 # on second round though, mail should be ignored
 $Self->Is(
@@ -462,7 +462,7 @@ $Self->Is(
 );
 
 my @Test8Tickets;
-for my $ID ( @TicketIDs ) {
+for my $ID (@TicketIDs) {
     push @Test8Tickets, {
         $TicketObject->TicketGet( TicketID => $ID )
     };
@@ -525,13 +525,12 @@ $Self->Is(
 # cleanup is done by RestoreDatabase.
 $Self->DoneTesting();
 
-
 sub GenerateEmail {
     my %Param = @_;
 
     $Param{XHeader} //= '';
 
-    return <<END
+    return << "END";
 From skywalker\@otobo.org Fri Dec 21 23:59:24 2001
 Return-Path: <skywalker\@otobo.org>
 Received: (from skywalker\@localhost)
@@ -562,6 +561,8 @@ System Tester I - <skywalker\@otobo.org>
 Old programmers never die. They just branch to a new address.
 END
 }
+
+## no critic (Perl::Critic::Policy::Subroutines::RequireArgUnpacking)
 
 sub ReadEmail {
     # start a new incoming communication
@@ -608,7 +609,7 @@ sub ReadEmail {
             'Kernel::System::PostMaster',
             ObjectParams => {
                 CommunicationLogObject => $CommunicationLogObject,
-                Email                  => [ split("\n", $_[0]) ],
+                Email                  => [ split( /\n/, $_[0] ) ],
                 Trusted                => 1,
             },
         );
@@ -700,4 +701,3 @@ sub ReadEmail {
 
     return @Return;
 }
-

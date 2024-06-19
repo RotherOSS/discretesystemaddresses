@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/Modules/AgentTicketCompose.pm
 # --
@@ -1474,7 +1474,7 @@ sub Run {
             my $MaxLines = $ConfigObject->Get('Ticket::Frontend::ResponseQuoteMaxLines');
 
             # split body - one element per line
-            my @Body = split "\n", $Data{Body};
+            my @Body = split /\n/, $Data{Body};
 
             # only modify if body is longer than allowed
             if ( scalar @Body > $MaxLines ) {

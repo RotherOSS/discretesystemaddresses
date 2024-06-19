@@ -2,7 +2,7 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -23,6 +23,8 @@ use Mail::Address;
 
 our @ObjectDependencies = (
     'Kernel::System::Log',
+    'Kernel::System::PostMaster::AddressPool',
+    'Kernel::System::SystemAddress',
     'Kernel::System::Ticket::Article',
 );
 
@@ -69,14 +71,14 @@ sub Run {
     return 1 if !%Article;
 
     if ( !$Article{AmbiguousTicketIDs} ) {
-        my ( $SenderEmail ) = Mail::Address->parse( $Article{From} );
+        my ($SenderEmail) = Mail::Address->parse( $Article{From} );
 
         my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
             Address => $SenderEmail->address(),
         );
 
         # if we are reading a message sent via our OTOBO itself for the first time
-        if ( $IsLocal ) {
+        if ($IsLocal) {
             $Self->_AddCommunicationLog(
                 Message => sprintf(
                     'Email with message id "%s" was sent as new article from a local address.',
@@ -145,7 +147,7 @@ sub Run {
 
         next TICKETID if !$Pool;
 
-        $Param{GetParam}{IgnoreAddressPools}{ $Pool } = $TicketID;
+        $Param{GetParam}{IgnoreAddressPools}{$Pool} = $TicketID;
     }
 
     return 1;

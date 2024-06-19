@@ -1,7 +1,7 @@
 # --
 # OTOBO is a web-based ticketing system for service organisations.
 # --
-# Copyright (C) 2019-2022 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -21,6 +21,8 @@ use strict;
 use warnings;
 
 our @ObjectDependencies = (
+    'Kernel::Config',
+    'Kernel::System::LinkObject',
 );
 
 # disable redefine warnings in this scope
@@ -66,6 +68,7 @@ our @ObjectDependencies = (
         return $Subject if !%LinkedTickets;
 
         for my $Ticket ( values %LinkedTickets ) {
+
             # remove all possible ticket hook formats with []
             $Subject =~ s/\[\s*\Q$TicketHook: $Ticket->{TicketNumber}\E\s*\]\s*//g;
             $Subject =~ s/\[\s*\Q$TicketHook:$Ticket->{TicketNumber}\E\s*\]\s*//g;
