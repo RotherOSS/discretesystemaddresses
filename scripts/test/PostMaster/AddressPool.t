@@ -565,6 +565,7 @@ END
 ## no critic (Perl::Critic::Policy::Subroutines::RequireArgUnpacking)
 
 sub ReadEmail {
+
     # start a new incoming communication
     my $CommunicationLogObject = $Kernel::OM->Create(
         'Kernel::System::CommunicationLog',

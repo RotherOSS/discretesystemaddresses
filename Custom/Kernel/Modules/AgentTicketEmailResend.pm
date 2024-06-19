@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/Modules/AgentTicketEmailResend.pm
+# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Modules/AgentTicketEmailResend.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -22,8 +22,8 @@ use strict;
 use warnings;
 
 use Kernel::System::VariableCheck qw(:all);
-use Kernel::Language qw(Translatable);
-use Mail::Address;
+use Kernel::Language              qw(Translatable);
+use Mail::Address                 ();
 
 our $ObjectManagerDisabled = 1;
 
@@ -36,12 +36,10 @@ sub new {
     $Self->{Debug} = $Param{Debug} || 0;
 
     # Get form ID.
-    $Self->{FormID} = $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormID' );
-
-    # Create new form ID.
-    if ( !$Self->{FormID} ) {
-        $Self->{FormID} = $Kernel::OM->Get('Kernel::System::Web::UploadCache')->FormIDCreate();
-    }
+    $Self->{FormID} = $Kernel::OM->Get('Kernel::System::Web::FormCache')->PrepareFormID(
+        ParamObject  => $Kernel::OM->Get('Kernel::System::Web::Request'),
+        LayoutObject => $Kernel::OM->Get('Kernel::Output::HTML::Layout'),
+    );
 
     return $Self;
 }
@@ -96,7 +94,7 @@ sub Run {
     my %AclAction = $TicketObject->TicketAclActionData();
 
     # Check if ACL restrictions exist.
-    if ( $ACL || IsHashRefWithData( \%AclAction ) ) {
+    if ($ACL) {
 
         my %AclActionLookup = reverse %AclAction;
 
@@ -199,7 +197,7 @@ sub Run {
         my $CustomerCounter = 1;
         for my $Count ( 1 ... $CustomersNumber ) {
             my $CustomerElement  = $ParamObject->GetParam( Param => 'CustomerTicketText_' . $Count );
-            my $CustomerSelected = ( $Selected eq $Count ? 'checked="checked"' : '' );
+            my $CustomerSelected = ( $Selected eq $Count ? 'checked ' : '' );
             my $CustomerKey      = $ParamObject->GetParam( Param => 'CustomerKey_' . $Count )
                 || '';
             my $CustomerQueue = $ParamObject->GetParam( Param => 'CustomerQueue_' . $Count )
@@ -684,8 +682,8 @@ sub Run {
             );
         }
 
-        # Remove pre-submitted attachments.
-        $UploadCacheObject->FormIDRemove( FormID => $GetParam{FormID} );
+        # remove all form data
+        $Kernel::OM->Get('Kernel::System::Web::FormCache')->FormIDRemove( FormID => $Self->{FormID} );
 
         # Load new URL in parent window and close popup.
         return $LayoutObject->PopupClose(
@@ -771,7 +769,7 @@ sub Run {
             ],
         );
         return $LayoutObject->Attachment(
-            ContentType => 'application/json; charset=' . $LayoutObject->{Charset},
+            ContentType => 'application/json',
             Content     => $JSON,
             Type        => 'inline',
             NoCache     => 1,
@@ -1212,12 +1210,8 @@ sub _Mask {
         );
     }
 
-    # Show the customer user address book if the module is registered and java script support is available.
-    if (
-        $ConfigObject->Get('Frontend::Module')->{AgentCustomerUserAddressBook}
-        && $LayoutObject->{BrowserJavaScriptSupport}
-        )
-    {
+    # Show the customer user address book if the module is registered.
+    if ( $ConfigObject->Get('Frontend::Module')->{AgentCustomerUserAddressBook} ) {
         $Param{OptionCustomerUserAddressBook} = 1;
     }
 

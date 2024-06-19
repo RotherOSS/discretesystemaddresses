@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/System/PostMaster/DestQueue.pm
+# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/System/PostMaster/DestQueue.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -35,8 +35,7 @@ sub new {
     my ( $Type, %Param ) = @_;
 
     # allocate new hash for object
-    my $Self = {};
-    bless( $Self, $Type );
+    my $Self = bless {}, $Type;
 
     # get parser object
     $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";

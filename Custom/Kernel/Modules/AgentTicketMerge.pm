@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/Modules/AgentTicketMerge.pm
+# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Modules/AgentTicketMerge.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -22,8 +22,8 @@ use strict;
 use warnings;
 
 use Kernel::System::VariableCheck qw(:all);
-use Kernel::Language qw(Translatable);
-use Mail::Address;
+use Kernel::Language              qw(Translatable);
+use Mail::Address                 ();
 
 our $ObjectManagerDisabled = 1;
 
@@ -39,7 +39,6 @@ sub new {
 sub Run {
     my ( $Self, %Param ) = @_;
 
-    my $Output;
     my %Error;
     my %GetParam;
 
@@ -84,7 +83,7 @@ sub Run {
     my %AclAction = $TicketObject->TicketAclActionData();
 
     # check if ACL restrictions exist
-    if ( $ACL || IsHashRefWithData( \%AclAction ) ) {
+    if ($ACL) {
 
         my %AclActionLookup = reverse %AclAction;
 
@@ -278,7 +277,7 @@ sub Run {
 
             }
 
-            $Param{InformSenderChecked} = $GetParam{InformSender} ? 'checked="checked"' : '';
+            $Param{InformSenderChecked} = $GetParam{InformSender} ? 'checked ' : '';
 
             $Output .= $LayoutObject->Output(
                 TemplateFile => 'AgentTicketMerge',

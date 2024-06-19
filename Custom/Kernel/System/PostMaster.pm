@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/System/PostMaster.pm
+# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/System/PostMaster.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -21,16 +21,21 @@ package Kernel::System::PostMaster;
 use strict;
 use warnings;
 
-use Kernel::System::EmailParser;
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
+
+use Kernel::System::EmailParser           ();
 # Rother OSS / DiscreteSystemAddresses
 use Kernel::System::PostMaster::AddressPool;
 # EO DiscreteSystemAddresses
-use Kernel::System::PostMaster::DestQueue;
-use Kernel::System::PostMaster::NewTicket;
-use Kernel::System::PostMaster::FollowUp;
-use Kernel::System::PostMaster::Reject;
-
-use Kernel::System::VariableCheck qw(IsHashRefWithData);
+use Kernel::System::PostMaster::DestQueue ();
+use Kernel::System::PostMaster::NewTicket ();
+use Kernel::System::PostMaster::FollowUp  ();
+use Kernel::System::PostMaster::Reject    ();
+use Kernel::System::VariableCheck         qw(IsHashRefWithData);
 
 our %ObjectManagerFlags = (
     NonSingleton => 1,
@@ -78,10 +83,9 @@ sub new {
     my ( $Type, %Param ) = @_;
 
     # allocate new hash for object
-    my $Self = {};
-    bless( $Self, $Type );
+    my $Self = bless {}, $Type;
 
-    # check needed objects
+    # check needed parameters
     $Self->{Email}                  = $Param{Email}                  || die "Got no Email!";
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
 
@@ -92,6 +96,10 @@ sub new {
     $Self->{ParserObject} = Kernel::System::EmailParser->new(
         Email => $Param{Email},
     );
+    $Self->{DestQueueObject} = Kernel::System::PostMaster::DestQueue->new( %{$Self} );
+    $Self->{NewTicketObject} = Kernel::System::PostMaster::NewTicket->new( %{$Self} );
+    $Self->{FollowUpObject}  = Kernel::System::PostMaster::FollowUp->new( %{$Self} );
+    $Self->{RejectObject}    = Kernel::System::PostMaster::Reject->new( %{$Self} );
 
     # create needed objects
 # Rother OSS / DiscreteSystemAddresses
@@ -104,17 +112,15 @@ sub new {
     );
 # EO DiscreteSystemAddresses
 
-    # get config object
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
-
     # check needed config options
+    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
     for my $Option (qw(PostmasterUserID PostmasterX-Header)) {
         $Self->{$Option} = $ConfigObject->Get($Option)
             || die "Found no '$Option' option in configuration!";
     }
 
-    # should I use x-otobo headers?
-    $Self->{Trusted} = defined $Param{Trusted} ? $Param{Trusted} : 1;
+    # should I use X-OTOBO headers?
+    $Self->{Trusted} = $Param{Trusted} // 1;
 
     if ( $Self->{Trusted} ) {
 

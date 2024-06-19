@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm
+# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Output/HTML/ArticleAction/AgentTicketCompose.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -134,28 +134,31 @@ sub GetConfig {
     # use this array twice (also for Reply All), so copy it first
     my @StandardResponseArrayReplyAll = @StandardResponseArray;
 
-    # build HTML string
-    my $StandardResponsesStrg = $LayoutObject->BuildSelection(
-        Name         => 'ResponseID',
-        ID           => 'ResponseID' . $Param{Article}->{ArticleID},
-        Class        => 'Modernize Small',
-        Data         => \@StandardResponseArray,
-        PossibleNone => 1,
-    );
-
     my @MenuItems;
+    if (@StandardResponseArray) {
 
-    push @MenuItems, {
-        ItemType              => 'Dropdown',
-        DropdownType          => 'Reply',
-        StandardResponsesStrg => $StandardResponsesStrg,
-        Name                  => Translatable('Reply'),
-        Class                 => 'AsPopup PopupType_TicketAction',
-        Action                => 'AgentTicketCompose',
-        FormID                => 'Reply' . $Param{Article}->{ArticleID},
-        ResponseElementID     => 'ResponseID' . $Param{Article}->{ArticleID},
-        Type                  => $Param{Type},
-    };
+        # build HTML string
+        my $StandardResponsesStrg = $LayoutObject->BuildSelection(
+            Name         => 'ResponseID',
+            ID           => 'ResponseID' . $Param{Article}->{ArticleID},
+            Class        => 'Modernize Small',
+            Data         => \@StandardResponseArray,
+            PossibleNone => 1,
+            Translation  => 1,
+        );
+
+        push @MenuItems, {
+            ItemType              => 'Dropdown',
+            DropdownType          => 'Reply',
+            StandardResponsesStrg => $StandardResponsesStrg,
+            Name                  => Translatable('Reply'),
+            Class                 => 'AsPopup PopupType_TicketAction',
+            Action                => 'AgentTicketCompose',
+            FormID                => 'Reply' . $Param{Article}->{ArticleID},
+            ResponseElementID     => 'ResponseID' . $Param{Article}->{ArticleID},
+            Type                  => $Param{Type},
+        };
+    }
 
     # check if reply all is needed
     my $Recipients = '';
@@ -188,14 +191,15 @@ sub GetConfig {
             $RecipientCount++;
         }
     }
-    if ( $RecipientCount > 1 ) {
+    if ( @StandardResponseArrayReplyAll && $RecipientCount > 1 ) {
 
-        $StandardResponsesStrg = $LayoutObject->BuildSelection(
+        my $StandardResponsesStrg = $LayoutObject->BuildSelection(
             Name         => 'ResponseID',
             ID           => 'ResponseIDAll' . $Param{Article}->{ArticleID},
             Class        => 'Modernize Small',
             Data         => \@StandardResponseArrayReplyAll,
             PossibleNone => 1,
+            Translation  => 1,
         );
 
         push @MenuItems, {
