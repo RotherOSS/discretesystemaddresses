@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Modules/AgentTicketEmailOutbound.pm
+# $origin: otobo - 635977efa018decfc0e18293812fe83acf4afaa7 - Kernel/Modules/AgentTicketEmailOutbound.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -126,9 +126,11 @@ sub Run {
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
 
     # get ACL restrictions
-    # NOTE TicketAcl() checks whether any ACL matches and returns 1 or undef
+    my %PossibleActions = ( 1 => $Self->{Action} );
+
     my $ACL = $TicketObject->TicketAcl(
-        Data          => '-',
+        Data          => \%PossibleActions,
+        Action        => $Self->{Action},
         TicketID      => $Self->{TicketID},
         ReturnType    => 'Action',
         ReturnSubType => '-',
