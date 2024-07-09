@@ -34,7 +34,7 @@ Address pools can be defined to define which email addresses and implicitely que
 Example:
 
 When an email to an IT and a sales department, both set up as different entities, is received, two tickets are created in the system – Ticket#123 in the queue "IT::Incidents" and a linked Ticket#124 in the queue "Inquiries".
-Sales can now answer the customer "Re: [Ticket#124] My Problem; Please discuss this with the IT directly.", and just put it@ourticketsystem into the cc. This will create the respective article in Ticket#123, and if the customer now only sends his answer to it@ourticketsystem, even if it is an answer to the last mail and uses the subject "Re: [Ticket#124] My Problem - specification", the FollowUp will be created in Ticket#123 (email addresses take precedence).
+Sales can now answer the customer "Re: [Ticket#124] Not my Problem; Please discuss this with the IT directly.", and just put it@ourticketsystem into the cc. This will create the respective article in Ticket#123, and if the customer now only sends his answer to it@ourticketsystem, even if it is an answer to the last mail and uses the subject "Re: [Ticket#124] My Problem - specification", the FollowUp will be created in Ticket#123 (email addresses take precedence).
 
 **Warning:** Be careful with setting up automatic replies - this package introduces additional ways to create loops, especially when replies are also sent on FollowUps.
 
