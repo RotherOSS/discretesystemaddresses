@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
+# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Modules/AgentTicketCompose.pm
+# $origin: otobo - fb18c9453318c5217ff78ca18c546fbe057ed927 - Kernel/Modules/AgentTicketCompose.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -18,9 +18,15 @@
 
 package Kernel::Modules::AgentTicketCompose;
 
+use v5.24;
 use strict;
 use warnings;
 
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
 use Kernel::System::VariableCheck qw(:all);
 use Kernel::Language              qw(Translatable);
 use Mail::Address                 ();
@@ -31,18 +37,19 @@ sub new {
     my ( $Type, %Param ) = @_;
 
     # allocate new hash for object
-    my $Self = {%Param};
-    bless( $Self, $Type );
+    my $Self = bless {%Param}, $Type;
+
+    my $ParamObject = $Kernel::OM->Get('Kernel::System::Web::Request');
 
     # Try to load draft if requested.
     if (
         $Kernel::OM->Get('Kernel::Config')->Get("Ticket::Frontend::$Self->{Action}")->{FormDraft}
-        && $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'LoadFormDraft' )
-        && $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormDraftID' )
+        && $ParamObject->GetParam( Param => 'LoadFormDraft' )
+        && $ParamObject->GetParam( Param => 'FormDraftID' )
         )
     {
-        $Self->{LoadedFormDraftID} = $Kernel::OM->Get('Kernel::System::Web::Request')->LoadFormDraft(
-            FormDraftID => $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormDraftID' ),
+        $Self->{LoadedFormDraftID} = $ParamObject->LoadFormDraft(
+            FormDraftID => $ParamObject->GetParam( Param => 'FormDraftID' ),
             UserID      => $Self->{UserID},
         );
     }
@@ -116,8 +123,13 @@ sub new {
 sub Run {
     my ( $Self, %Param ) = @_;
 
-    # get layout object
-    my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    # get needed objects
+    my $LayoutObject  = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $TicketObject  = $Kernel::OM->Get('Kernel::System::Ticket');
+    my $ConfigObject  = $Kernel::OM->Get('Kernel::Config');
+    my $ParamObject   = $Kernel::OM->Get('Kernel::System::Web::Request');
+    my $ArticleObject = $Kernel::OM->Get('Kernel::System::Ticket::Article');
+    my $MainObject    = $Kernel::OM->Get('Kernel::System::Main');
 
     # check needed stuff
     if ( !$Self->{TicketID} ) {
@@ -127,14 +139,7 @@ sub Run {
         );
     }
 
-    # get needed objects
-    my $ConfigObject  = $Kernel::OM->Get('Kernel::Config');
-    my $TicketObject  = $Kernel::OM->Get('Kernel::System::Ticket');
-    my $ArticleObject = $Kernel::OM->Get('Kernel::System::Ticket::Article');
-
-    my $ArticleBackendObject = $ArticleObject->BackendForChannel( ChannelName => 'Email' );
-
-    # get config for frontend module
+    # get config of frontend module
     my $Config = $ConfigObject->Get("Ticket::Frontend::$Self->{Action}");
 
     # check permissions
@@ -178,7 +183,7 @@ sub Run {
 
     # Check for failed draft loading request.
     if (
-        $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'LoadFormDraft' )
+        $ParamObject->GetParam( Param => 'LoadFormDraft' )
         && !$Self->{LoadedFormDraftID}
         )
     {
@@ -190,7 +195,7 @@ sub Run {
 
     my %Ticket = $TicketObject->TicketGet(
         TicketID      => $Self->{TicketID},
-        DynamicFields => 1
+        DynamicFields => 1,
     );
 
     # get lock state
@@ -247,8 +252,7 @@ sub Run {
         }
     }
 
-    # get param object
-    my $ParamObject = $Kernel::OM->Get('Kernel::System::Web::Request');
+    my $ArticleBackendObject = $ArticleObject->BackendForChannel( ChannelName => 'Email' );
 
     # get params
     my %GetParam;
@@ -273,71 +277,73 @@ sub Run {
     my %AddressesList;
 
     my @MultipleCustomer;
-    my $CustomersNumber = $ParamObject->GetParam( Param => 'CustomerTicketCounterToCustomer' ) || 0;
-    my $Selected        = $ParamObject->GetParam( Param => 'CustomerSelected' )                || '';
+    my $CustomersNumberTo = $ParamObject->GetParam( Param => 'CustomerTicketCounterToCustomer' ) || 0;
+    my $Selected          = $ParamObject->GetParam( Param => 'CustomerSelected' )                || '';
 
     # get check item object
     my $CheckItemObject = $Kernel::OM->Get('Kernel::System::CheckItem');
 
-    if ($CustomersNumber) {
-
+    if ($CustomersNumberTo) {
         my $CustomerCounter = 1;
-        for my $Count ( 1 ... $CustomersNumber ) {
-            my $CustomerElement  = $ParamObject->GetParam( Param => 'CustomerTicketText_' . $Count );
+
+        COUNT:
+        for my $Count ( 1 .. $CustomersNumberTo ) {
+            last COUNT if $Count > 1_000;    # bail out when the number of customers is abnormally high
+
+            my $CustomerElement = $ParamObject->GetParam( Param => 'CustomerTicketText_' . $Count );
+
+            next COUNT unless $CustomerElement;
+
             my $CustomerSelected = ( $Selected eq $Count ? 'checked ' : '' );
-            my $CustomerKey      = $ParamObject->GetParam( Param => 'CustomerKey_' . $Count )
-                || '';
-            my $CustomerQueue = $ParamObject->GetParam( Param => 'CustomerQueue_' . $Count )
-                || '';
-            if ($CustomerElement) {
+            my $CustomerKey      = $ParamObject->GetParam( Param => 'CustomerKey_' . $Count )   || '';
+            my $CustomerQueue    = $ParamObject->GetParam( Param => 'CustomerQueue_' . $Count ) || '';
 
-                if ( $GetParam{To} ) {
-                    $GetParam{To} .= ', ' . $CustomerElement;
-                }
-                else {
-                    $GetParam{To} = $CustomerElement;
-                }
-
-                # check email address
-                my $CustomerErrorMsg = 'CustomerGenericServerErrorMsg';
-                my $CustomerError    = '';
-                for my $Email ( Mail::Address->parse($CustomerElement) ) {
-                    if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
-                        $CustomerErrorMsg = $CheckItemObject->CheckErrorType()
-                            . 'ServerErrorMsg';
-                        $CustomerError = 'ServerError';
-                    }
-                }
-
-                # check for duplicated entries
-                if ( defined $AddressesList{$CustomerElement} && $CustomerError eq '' ) {
-                    $CustomerErrorMsg = 'IsDuplicatedServerErrorMsg';
-                    $CustomerError    = 'ServerError';
-                }
-
-                my $CustomerDisabled = '';
-                my $CountAux         = $CustomerCounter++;
-                if ( $CustomerError ne '' ) {
-                    $CustomerDisabled = 'disabled="disabled"';
-                    $CountAux         = $Count . 'Error';
-                }
-
-                if ( $CustomerQueue ne '' ) {
-                    $CustomerQueue = $Count;
-                }
-
-                push @MultipleCustomer, {
-                    Count            => $CountAux,
-                    CustomerElement  => $CustomerElement,
-                    CustomerSelected => $CustomerSelected,
-                    CustomerKey      => $CustomerKey,
-                    CustomerError    => $CustomerError,
-                    CustomerErrorMsg => $CustomerErrorMsg,
-                    CustomerDisabled => $CustomerDisabled,
-                    CustomerQueue    => $CustomerQueue,
-                };
-                $AddressesList{$CustomerElement} = 1;
+            if ( $GetParam{To} ) {
+                $GetParam{To} .= ', ' . $CustomerElement;
             }
+            else {
+                $GetParam{To} = $CustomerElement;
+            }
+
+            # check email address
+            my $CustomerErrorMsg = 'CustomerGenericServerErrorMsg';
+            my $CustomerError    = '';
+            for my $Email ( Mail::Address->parse($CustomerElement) ) {
+                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+                    $CustomerErrorMsg = $CheckItemObject->CheckErrorType()
+                        . 'ServerErrorMsg';
+                    $CustomerError = 'ServerError';
+                }
+            }
+
+            # check for duplicated entries
+            if ( defined $AddressesList{$CustomerElement} && $CustomerError eq '' ) {
+                $CustomerErrorMsg = 'IsDuplicatedServerErrorMsg';
+                $CustomerError    = 'ServerError';
+            }
+
+            my $CustomerDisabled = '';
+            my $CountAux         = $CustomerCounter++;
+            if ( $CustomerError ne '' ) {
+                $CustomerDisabled = 'disabled';
+                $CountAux         = $Count . 'Error';
+            }
+
+            if ( $CustomerQueue ne '' ) {
+                $CustomerQueue = $Count;
+            }
+
+            push @MultipleCustomer, {
+                Count            => $CountAux,
+                CustomerElement  => $CustomerElement,
+                CustomerSelected => $CustomerSelected,
+                CustomerKey      => $CustomerKey,
+                CustomerError    => $CustomerError,
+                CustomerErrorMsg => $CustomerErrorMsg,
+                CustomerDisabled => $CustomerDisabled,
+                CustomerQueue    => $CustomerQueue,
+            };
+            $AddressesList{$CustomerElement} = 1;
         }
     }
 
@@ -346,61 +352,63 @@ sub Run {
 
     if ($CustomersNumberCc) {
         my $CustomerCounterCc = 1;
-        for my $Count ( 1 ... $CustomersNumberCc ) {
+
+        COUNT:
+        for my $Count ( 1 .. $CustomersNumberCc ) {
+            last COUNT if $Count > 1_000;    # bail out when the number of customers is abnormally high
+
             my $CustomerElementCc = $ParamObject->GetParam( Param => 'CcCustomerTicketText_' . $Count );
-            my $CustomerKeyCc     = $ParamObject->GetParam( Param => 'CcCustomerKey_' . $Count )
-                || '';
-            my $CustomerQueueCc = $ParamObject->GetParam( Param => 'CcCustomerQueue_' . $Count )
-                || '';
 
-            if ($CustomerElementCc) {
+            next COUNT unless $CustomerElementCc;
 
-                if ( $GetParam{Cc} ) {
-                    $GetParam{Cc} .= ', ' . $CustomerElementCc;
-                }
-                else {
-                    $GetParam{Cc} = $CustomerElementCc;
-                }
+            my $CustomerKeyCc   = $ParamObject->GetParam( Param => 'CcCustomerKey_' . $Count )   || '';
+            my $CustomerQueueCc = $ParamObject->GetParam( Param => 'CcCustomerQueue_' . $Count ) || '';
 
-                # check email address
-                my $CustomerErrorMsgCc = 'CustomerGenericServerErrorMsg';
-                my $CustomerErrorCc    = '';
-                for my $Email ( Mail::Address->parse($CustomerElementCc) ) {
-                    if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
-                        $CustomerErrorMsgCc = $CheckItemObject->CheckErrorType()
-                            . 'ServerErrorMsg';
-                        $CustomerErrorCc = 'ServerError';
-                    }
-                }
-
-                # check for duplicated entries
-                if ( defined $AddressesList{$CustomerElementCc} && $CustomerErrorCc eq '' ) {
-                    $CustomerErrorMsgCc = 'IsDuplicatedServerErrorMsg';
-                    $CustomerErrorCc    = 'ServerError';
-                }
-
-                my $CustomerDisabledCc = '';
-                my $CountAuxCc         = $CustomerCounterCc++;
-                if ( $CustomerErrorCc ne '' ) {
-                    $CustomerDisabledCc = 'disabled="disabled"';
-                    $CountAuxCc         = $Count . 'Error';
-                }
-
-                if ( $CustomerQueueCc ne '' ) {
-                    $CustomerQueueCc = $Count;
-                }
-
-                push @MultipleCustomerCc, {
-                    Count            => $CountAuxCc,
-                    CustomerElement  => $CustomerElementCc,
-                    CustomerKey      => $CustomerKeyCc,
-                    CustomerError    => $CustomerErrorCc,
-                    CustomerErrorMsg => $CustomerErrorMsgCc,
-                    CustomerDisabled => $CustomerDisabledCc,
-                    CustomerQueue    => $CustomerQueueCc,
-                };
-                $AddressesList{$CustomerElementCc} = 1;
+            if ( $GetParam{Cc} ) {
+                $GetParam{Cc} .= ', ' . $CustomerElementCc;
             }
+            else {
+                $GetParam{Cc} = $CustomerElementCc;
+            }
+
+            # check email address
+            my $CustomerErrorMsgCc = 'CustomerGenericServerErrorMsg';
+            my $CustomerErrorCc    = '';
+            for my $Email ( Mail::Address->parse($CustomerElementCc) ) {
+                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+                    $CustomerErrorMsgCc = $CheckItemObject->CheckErrorType()
+                        . 'ServerErrorMsg';
+                    $CustomerErrorCc = 'ServerError';
+                }
+            }
+
+            # check for duplicated entries
+            if ( defined $AddressesList{$CustomerElementCc} && $CustomerErrorCc eq '' ) {
+                $CustomerErrorMsgCc = 'IsDuplicatedServerErrorMsg';
+                $CustomerErrorCc    = 'ServerError';
+            }
+
+            my $CustomerDisabledCc = '';
+            my $CountAuxCc         = $CustomerCounterCc++;
+            if ( $CustomerErrorCc ne '' ) {
+                $CustomerDisabledCc = 'disabled';
+                $CountAuxCc         = $Count . 'Error';
+            }
+
+            if ( $CustomerQueueCc ne '' ) {
+                $CustomerQueueCc = $Count;
+            }
+
+            push @MultipleCustomerCc, {
+                Count            => $CountAuxCc,
+                CustomerElement  => $CustomerElementCc,
+                CustomerKey      => $CustomerKeyCc,
+                CustomerError    => $CustomerErrorCc,
+                CustomerErrorMsg => $CustomerErrorMsgCc,
+                CustomerDisabled => $CustomerDisabledCc,
+                CustomerQueue    => $CustomerQueueCc,
+            };
+            $AddressesList{$CustomerElementCc} = 1;
         }
     }
 
@@ -409,74 +417,76 @@ sub Run {
 
     if ($CustomersNumberBcc) {
         my $CustomerCounterBcc = 1;
-        for my $Count ( 1 ... $CustomersNumberBcc ) {
+
+        COUNT:
+        for my $Count ( 1 .. $CustomersNumberBcc ) {
+            last COUNT if $Count > 1_000;    # bail out when the number of customers is abnormally high
+
             my $CustomerElementBcc = $ParamObject->GetParam( Param => 'BccCustomerTicketText_' . $Count );
-            my $CustomerKeyBcc     = $ParamObject->GetParam( Param => 'BccCustomerKey_' . $Count )
-                || '';
-            my $CustomerQueueBcc = $ParamObject->GetParam( Param => 'BccCustomerQueue_' . $Count )
-                || '';
 
-            if ($CustomerElementBcc) {
+            next COUNT unless $CustomerElementBcc;
 
-                if ( $GetParam{Bcc} ) {
-                    $GetParam{Bcc} .= ', ' . $CustomerElementBcc;
-                }
-                else {
-                    $GetParam{Bcc} = $CustomerElementBcc;
-                }
+            my $CustomerKeyBcc   = $ParamObject->GetParam( Param => 'BccCustomerKey_' . $Count )   || '';
+            my $CustomerQueueBcc = $ParamObject->GetParam( Param => 'BccCustomerQueue_' . $Count ) || '';
 
-                # check email address
-                my $CustomerErrorMsgBcc = 'CustomerGenericServerErrorMsg';
-                my $CustomerErrorBcc    = '';
-                for my $Email ( Mail::Address->parse($CustomerElementBcc) ) {
-                    if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
-                        $CustomerErrorMsgBcc = $CheckItemObject->CheckErrorType()
-                            . 'ServerErrorMsg';
-                        $CustomerErrorBcc = 'ServerError';
-                    }
-                }
-
-                # check for duplicated entries
-                if ( defined $AddressesList{$CustomerElementBcc} && $CustomerErrorBcc eq '' ) {
-                    $CustomerErrorMsgBcc = 'IsDuplicatedServerErrorMsg';
-                    $CustomerErrorBcc    = 'ServerError';
-                }
-
-                my $CustomerDisabledBcc = '';
-                my $CountAuxBcc         = $CustomerCounterBcc++;
-                if ( $CustomerErrorBcc ne '' ) {
-                    $CustomerDisabledBcc = 'disabled="disabled"';
-                    $CountAuxBcc         = $Count . 'Error';
-                }
-
-                if ( $CustomerQueueBcc ne '' ) {
-                    $CustomerQueueBcc = $Count;
-                }
-
-                push @MultipleCustomerBcc, {
-                    Count            => $CountAuxBcc,
-                    CustomerElement  => $CustomerElementBcc,
-                    CustomerKey      => $CustomerKeyBcc,
-                    CustomerError    => $CustomerErrorBcc,
-                    CustomerErrorMsg => $CustomerErrorMsgBcc,
-                    CustomerDisabled => $CustomerDisabledBcc,
-                    CustomerQueue    => $CustomerQueueBcc,
-                };
-                $AddressesList{$CustomerElementBcc} = 1;
+            if ( $GetParam{Bcc} ) {
+                $GetParam{Bcc} .= ', ' . $CustomerElementBcc;
             }
+            else {
+                $GetParam{Bcc} = $CustomerElementBcc;
+            }
+
+            # check email address
+            my $CustomerErrorMsgBcc = 'CustomerGenericServerErrorMsg';
+            my $CustomerErrorBcc    = '';
+            for my $Email ( Mail::Address->parse($CustomerElementBcc) ) {
+                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+                    $CustomerErrorMsgBcc = $CheckItemObject->CheckErrorType()
+                        . 'ServerErrorMsg';
+                    $CustomerErrorBcc = 'ServerError';
+                }
+            }
+
+            # check for duplicated entries
+            if ( defined $AddressesList{$CustomerElementBcc} && $CustomerErrorBcc eq '' ) {
+                $CustomerErrorMsgBcc = 'IsDuplicatedServerErrorMsg';
+                $CustomerErrorBcc    = 'ServerError';
+            }
+
+            my $CustomerDisabledBcc = '';
+            my $CountAuxBcc         = $CustomerCounterBcc++;
+            if ( $CustomerErrorBcc ne '' ) {
+                $CustomerDisabledBcc = 'disabled';
+                $CountAuxBcc         = $Count . 'Error';
+            }
+
+            if ( $CustomerQueueBcc ne '' ) {
+                $CustomerQueueBcc = $Count;
+            }
+
+            push @MultipleCustomerBcc, {
+                Count            => $CountAuxBcc,
+                CustomerElement  => $CustomerElementBcc,
+                CustomerKey      => $CustomerKeyBcc,
+                CustomerError    => $CustomerErrorBcc,
+                CustomerErrorMsg => $CustomerErrorMsgBcc,
+                CustomerDisabled => $CustomerDisabledBcc,
+                CustomerQueue    => $CustomerQueueBcc,
+            };
+            $AddressesList{$CustomerElementBcc} = 1;
         }
     }
 
     # get Dynamic fields form ParamObject
     my %DynamicFieldValues;
 
-    # get backend object
+    # get dynamic field backend object
     my $DynamicFieldBackendObject = $Kernel::OM->Get('Kernel::System::DynamicField::Backend');
 
     # cycle trough the activated Dynamic Fields for this screen
     DYNAMICFIELD:
     for my $DynamicFieldConfig ( @{ $Self->{DynamicField} } ) {
-        next DYNAMICFIELD if !IsHashRefWithData($DynamicFieldConfig);
+        next DYNAMICFIELD unless IsHashRefWithData($DynamicFieldConfig);
 
         # extract the dynamic field value from the web request
         $DynamicFieldValues{ $DynamicFieldConfig->{Name} } =
@@ -488,15 +498,17 @@ sub Run {
     }
 
     # convert dynamic field values into a structure for ACLs
-    my %DynamicFieldACLParameters;
-    DYNAMICFIELD:
-    for my $DynamicFieldItem ( sort keys %DynamicFieldValues ) {
-        next DYNAMICFIELD if !$DynamicFieldItem;
-        next DYNAMICFIELD if !defined $DynamicFieldValues{$DynamicFieldItem};
+    {
+        my %DynamicFieldACLParameters;
+        DYNAMICFIELD:
+        for my $DynamicFieldItem ( sort keys %DynamicFieldValues ) {
+            next DYNAMICFIELD unless $DynamicFieldItem;
+            next DYNAMICFIELD unless defined $DynamicFieldValues{$DynamicFieldItem};
 
-        $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicFieldItem } = $DynamicFieldValues{$DynamicFieldItem};
+            $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicFieldItem } = $DynamicFieldValues{$DynamicFieldItem};
+        }
+        $GetParam{DynamicField} = \%DynamicFieldACLParameters;
     }
-    $GetParam{DynamicField} = \%DynamicFieldACLParameters;
 
     # transform pending time, time stamp based on user time zone
     if (
@@ -512,9 +524,8 @@ sub Run {
         );
     }
 
-    # get needed objects
+    # get upload cache object
     my $UploadCacheObject = $Kernel::OM->Get('Kernel::System::Web::UploadCache');
-    my $MainObject        = $Kernel::OM->Get('Kernel::System::Main');
 
     # send email
     if ( $Self->{Subaction} eq 'SendEmail' || $Self->{LoadedFormDraftID} ) {
@@ -601,7 +612,8 @@ sub Run {
         # Check draft name.
         if (
             $FormDraftAction
-            && ( $FormDraftAction eq 'Add' || $FormDraftAction eq 'Update' )
+            &&
+            ( $FormDraftAction eq 'Add' || $FormDraftAction eq 'Update' )
             )
         {
             my $Title = $ParamObject->GetParam( Param => 'FormDraftTitle' );
@@ -693,6 +705,7 @@ sub Run {
             }
         }
 
+        # Return JSON when there already is a response
         if (%FormDraftResponse) {
 
             # build JSON output
@@ -922,16 +935,14 @@ sub Run {
                 $Error{ $DynamicFieldConfig->{Name} }                        = ' ServerError';
                 $DynamicFieldValidationResult{ $DynamicFieldConfig->{Name} } = $ValidationResult;
             }
-
         }
 
+        # Make sure we don't save form if a draft was loaded.
         if ( $Self->{LoadedFormDraftID} ) {
-
-            # Make sure we don't save form if a draft was loaded.
             %Error = ( LoadedFormDraft => 1 );
         }
 
-        # check if there is an error
+        # check errors
         if (%Error) {
 
             my $Output = $LayoutObject->Header(
@@ -1097,16 +1108,19 @@ sub Run {
         }
 
         # set dynamic fields
-        # cycle trough the activated Dynamic Fields for this screen
+        # cycle through the activated Dynamic Fields for this screen
         DYNAMICFIELD:
         for my $DynamicFieldConfig ( @{ $Self->{DynamicField} } ) {
             next DYNAMICFIELD if !IsHashRefWithData($DynamicFieldConfig);
             next DYNAMICFIELD if $DynamicFieldConfig->{Readonly};
 
             # set the object ID (TicketID or ArticleID) depending on the field configration
-            my $ObjectID = $DynamicFieldConfig->{ObjectType} eq 'Article' ? $ArticleID : $Self->{TicketID};
+            my $ObjectID = $DynamicFieldConfig->{ObjectType} eq 'Article'
+                ? $ArticleID
+                : $Self->{TicketID};
 
-            # set the value
+            # set the value which was taken from web request
+            # TODO: for Reference and Lens, the order is relevant
             my $Success = $DynamicFieldBackendObject->ValueSet(
                 DynamicFieldConfig => $DynamicFieldConfig,
                 ObjectID           => $ObjectID,
@@ -1172,7 +1186,7 @@ sub Run {
             );
         }
 
-        # redirect
+        # load new URL in parent window and close popup
         if (
             $StateData{TypeName} =~ /^close/i
             && !$ConfigObject->Get('Ticket::Frontend::RedirectAfterCloseDisabled')
@@ -1183,7 +1197,6 @@ sub Run {
             );
         }
 
-        # load new URL in parent window and close popup
         return $LayoutObject->PopupClose(
             URL => "Action=AgentTicketZoom;TicketID=$Self->{TicketID};ArticleID=$ArticleID",
         );
@@ -1246,18 +1259,15 @@ sub Run {
 
                 my $Key = $Object->Option( %GetParam, Config => $Jobs{$Job} );
                 if ($Key) {
-                    push(
-                        @ExtendedData,
-                        {
-                            Name         => $Key,
-                            Data         => \%Data,
-                            SelectedID   => $GetParam{$Key},
-                            Translation  => 1,
-                            PossibleNone => 1,
-                            Multiple     => $Multiple,
-                            Max          => 150,
-                        }
-                    );
+                    push @ExtendedData, {
+                        Name         => $Key,
+                        Data         => \%Data,
+                        SelectedID   => $GetParam{$Key},
+                        Translation  => 1,
+                        PossibleNone => 1,
+                        Multiple     => $Multiple,
+                        Max          => 150,
+                    };
                 }
             }
         }
@@ -1337,9 +1347,10 @@ sub Run {
                     Max          => 100,
                 },
                 @DynamicFieldAJAX,
-
             ],
         );
+
+        # can't use JSONReply here, as we already have JSON
         return $LayoutObject->Attachment(
             ContentType => 'application/json',
             Content     => $JSON,
@@ -1357,8 +1368,10 @@ sub Run {
         # get std attachment object
         my $StdAttachmentObject = $Kernel::OM->Get('Kernel::System::StdAttachment');
 
-        # add std. attachments to email
+        # handle response template attachments and state
         if ( $GetParam{ResponseID} ) {
+
+            # add std. attachments to email
             my %AllStdAttachments = $StdAttachmentObject->StdAttachmentStandardTemplateMemberList(
                 StandardTemplateID => $GetParam{ResponseID},
             );
@@ -1370,6 +1383,12 @@ sub Run {
                     %Data,
                 );
             }
+
+            # set response preselected state
+            my %Response = $Kernel::OM->Get('Kernel::System::ResponseTemplatesStatePreselection')->StandardTemplateGet(
+                ID => $GetParam{ResponseID},
+            );
+            $GetParam{StateID} ||= $Response{PreSelectedTicketStateID};
         }
 
         # get all attachments meta data
@@ -1377,7 +1396,7 @@ sub Run {
             FormID => $Self->{FormID},
         );
 
-        # get last customer article or selected article ...
+        # get last customer article or selected article
         my @ArticleList;
 
         if ( $GetParam{ArticleID} ) {
@@ -1528,7 +1547,7 @@ sub Run {
 
         if ( $LayoutObject->{BrowserRichText} ) {
 
-            # prepare body, subject, ReplyTo ...
+            # prepare body, subject, ReplyTo
             # rewrap body if exists
             if ( $Data{Body} ) {
                 $Data{Body} =~ s/\t/ /g;
@@ -1576,7 +1595,7 @@ sub Run {
         }
         else {
 
-            # prepare body, subject, ReplyTo ...
+            # prepare body, subject, ReplyTo
             # re-wrap body if exists
             if ( $Data{Body} ) {
                 $Data{Body} =~ s/\t/ /g;
@@ -1799,7 +1818,7 @@ sub Run {
             }
         }
 
-        # build new repsonse format based on template
+        # build new response format based on template
         $Data{ResponseFormat} = $LayoutObject->Output(
             Template => $ResponseFormat,
             Data     => { %Param, %DataHTML },
@@ -1923,7 +1942,7 @@ sub Run {
             }
         }
 
-        # build view ...
+        # build view
         $Output .= $Self->_Mask(
             TicketID   => $Self->{TicketID},
             NextStates => $Self->_GetNextStates(
@@ -1979,12 +1998,6 @@ sub _Mask {
         $State{SelectedID} = $Param{GetParam}->{StateID};
     }
     else {
-        if ( $Param{GetParam}->{ResponseID} ) {
-            my %Response = $Kernel::OM->Get('Kernel::System::ResponseTemplatesStatePreselection')->StandardTemplateGet(
-                ID => $Param{GetParam}->{ResponseID},
-            );
-            $State{SelectedID} = $Response{PreSelectedTicketStateID};
-        }
         $State{SelectedValue} //= $Config->{StateDefault};
     }
     $Param{NextStatesStrg} = $LayoutObject->BuildSelection(
@@ -2372,6 +2385,13 @@ sub _Mask {
 
         $LoadedFormDraft->{ChangeByName} = $Kernel::OM->Get('Kernel::System::User')->UserName(
             UserID => $LoadedFormDraft->{ChangeBy},
+        );
+    }
+
+    # explanatory message about asterisk
+    if ( $ConfigObject->Get('Ticket::Frontend::AsteriskExplanation') ) {
+        $LayoutObject->Block(
+            Name => 'AsteriskExplanation',
         );
     }
 

@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2024 Rother OSS GmbH, https://otobo.io/
+# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 4dade81e7e04433cb2aed36af0c8727d822a1c61 - Kernel/Modules/AgentTicketMerge.pm
+# $origin: otobo - fb18c9453318c5217ff78ca18c546fbe057ed927 - Kernel/Modules/AgentTicketMerge.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -500,6 +500,13 @@ sub Run {
             # set up rich text editor
             $LayoutObject->SetRichTextParameters(
                 Data => \%Param,
+            );
+        }
+
+        # explanatory message about asterisk
+        if ( $ConfigObject->Get('Ticket::Frontend::AsteriskExplanation') ) {
+            $LayoutObject->Block(
+                Name => 'AsteriskExplanation',
             );
         }
 
