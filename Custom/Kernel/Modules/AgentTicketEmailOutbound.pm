@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2023 Rother OSS GmbH, https://otobo.de/
+# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - fa038a38019d88902d7e5fddf3dcdfeb2effbbf0 - Kernel/Modules/AgentTicketEmailOutbound.pm
+# $origin: otobo - c4729719b9788da163909113055de495fac35df4 - Kernel/Modules/AgentTicketEmailOutbound.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -121,19 +121,6 @@ sub Run {
         my $CustomerUser = $Ticket{CustomerUserID};
         my $QueueID      = $Ticket{QueueID};
 
-        # get dynamic field values form http request
-        my %DynamicFieldValues;
-
-        # convert dynamic field values into a structure for ACLs
-        my %DynamicFieldACLParameters;
-        DYNAMICFIELD:
-        for my $DynamicFieldItem ( sort keys %DynamicFieldValues ) {
-            next DYNAMICFIELD if !$DynamicFieldItem;
-            next DYNAMICFIELD if !defined $DynamicFieldValues{$DynamicFieldItem};
-
-            $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicFieldItem } = $DynamicFieldValues{$DynamicFieldItem};
-        }
-
         # get config object
         my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
 
@@ -148,9 +135,6 @@ sub Run {
             CustomerUserID => $CustomerUser || '',
             QueueID        => $QueueID,
         );
-
-        # update Dynamic Fields Possible Values via AJAX
-        my @DynamicFieldAJAX;
 
         # get config for frontend module
         my $Config = $ConfigObject->Get("Ticket::Frontend::$Self->{Action}");
@@ -201,24 +185,6 @@ sub Run {
                 # convert Filer key => key back to key => value using map
                 %{$PossibleValues} = map { $_ => $PossibleValues->{$_} } keys %Filter;
             }
-
-            my $DataValues = $DynamicFieldBackendObject->BuildSelectionDataGet(
-                DynamicFieldConfig => $DynamicFieldConfig,
-                PossibleValues     => $PossibleValues,
-                Value              => $DynamicFieldValues{ $DynamicFieldConfig->{Name} },
-            ) || $PossibleValues;
-
-            # add dynamic field to the list of fields to update
-            push(
-                @DynamicFieldAJAX,
-                {
-                    Name        => 'DynamicField_' . $DynamicFieldConfig->{Name},
-                    Data        => $DataValues,
-                    SelectedID  => $DynamicFieldValues{ $DynamicFieldConfig->{Name} },
-                    Translation => $DynamicFieldConfig->{Config}->{TranslatableValues} || 0,
-                    Max         => 100,
-                }
-            );
         }
 
         my $StandardTemplates = $Self->_GetStandardTemplates(
@@ -351,7 +317,6 @@ sub Run {
                     Translation  => 1,
                     Max          => 100,
                 },
-                @DynamicFieldAJAX,
                 @TemplateAJAX,
             ],
         );
@@ -757,7 +722,7 @@ sub Form {
         # to store dynamic field value from database (or undefined)
         my $Value;
 
-        # only get values for Ticket fields (all screens based on AgentTickeActionCommon
+        # only get values for Ticket fields (all screens based on AgentTicketActionCommon
         # create a new article, then article fields will be always empty at the beginning)
         if ( $DynamicFieldConfig->{ObjectType} eq 'Ticket' ) {
 
@@ -790,7 +755,7 @@ sub Form {
 
     # Inform a user that article subject will be empty if contains only the ticket hook (if nothing is modified).
     $Output .= $LayoutObject->Notify(
-        Data => Translatable('Article subject will be empty if the subject contains only the ticket hook!'),
+        Data => $LayoutObject->{LanguageObject}->Translate('Article subject will be empty if the subject contains only the ticket hook!'),
     );
 
     $Output .= $Self->_Mask(
