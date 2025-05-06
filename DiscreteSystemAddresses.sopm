@@ -2,7 +2,7 @@
 <otobo_package version="1.0">
     <Name>DiscreteSystemAddresses</Name>
     <Version>0.0.0</Version>
-    <Framework>11.0.x</Framework>
+    <Framework Minimum="11.0.9">11.0.x</Framework>
     <Vendor>Rother OSS GmbH</Vendor>
     <URL>https://otobo.de/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
