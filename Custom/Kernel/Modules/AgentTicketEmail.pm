@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
+# Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 02c919daa3457da004b3d2eda877ccab41e068e5 - Kernel/Modules/AgentTicketEmail.pm
+# $origin: otobo - 800091b06ec8f5a82ebe43f3c45644cf09dab47a - Kernel/Modules/AgentTicketEmail.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -95,16 +95,6 @@ sub new {
         ParamObject  => $Kernel::OM->Get('Kernel::System::Web::Request'),
         LayoutObject => $Kernel::OM->Get('Kernel::Output::HTML::Layout'),
     );
-# ---
-# ITSMIncidentProblemManagement
-# ---
-
-    # Check if ITSMIncidentProblemManagement is used.
-    my $OutputFilterConfig = $Kernel::OM->Get('Kernel::Config')->Get('Frontend::Output::FilterElementPost');
-    if ( $OutputFilterConfig->{ITSMIncidentProblemManagement} ) {
-        $Self->{ITSMIncidentProblemManagement} = 1;
-    }
-# ---
 
     # methods which are used to determine the possible values of the standard fields
     $Self->{FieldMethods} = [
@@ -146,7 +136,7 @@ sub new {
         },
     ];
 
-    # dependancies of standard fields which are not defined via ACLs
+    # dependencies of standard fields which are not defined via ACLs
     $Self->{InternalDependancy} = {
         Dest => {
             NewUserID          => 1,
@@ -405,12 +395,6 @@ sub Run {
 
     # get Dynamic fields form ParamObject
     my %DynamicFieldValues;
-# ---
-# ITSMIncidentProblemManagement
-# ---
-    # to store the reference to the dynamic field for the impact
-    my $ImpactDynamicFieldConfig;
-# ---
 
     # get needed objects
     my $DynamicFieldBackendObject = $Kernel::OM->Get('Kernel::System::DynamicField::Backend');
@@ -426,6 +410,20 @@ sub Run {
     # frontend specific config
     my $Config = $ConfigObject->Get("Ticket::Frontend::$Self->{Action}");
 
+# Rother OSS / ITSMCore - calculate Priority via CIP matrix
+    my $CIPCalculate = $Config->{PriorityByCIP} // $ConfigObject->Get('ITSM::Frontend::CIPAllocationDefault');
+    my $ServiceObject;
+    my $CIPAllocateObject;
+    if ( $CIPCalculate ) {
+        $ServiceObject     = $Kernel::OM->Get('Kernel::System::Service');
+        $CIPAllocateObject = $Kernel::OM->Get('Kernel::System::ITSMCIPAllocate');
+
+        $Self->{InternalDependancy}{ServiceID}{PriorityID}                    = 1;
+        $Self->{InternalDependancy}{DynamicField_ITSMImpact}{PriorityID}      = 1;
+        $Self->{InternalDependancy}{DynamicField_ITSMCriticality}{PriorityID} = 1;
+    }
+# EO ITSMCore
+
     # cycle through the activated Dynamic Fields for this screen
     DYNAMICFIELD:
     for my $DynamicFieldConfig ( values $Self->{DynamicField}->%* ) {
@@ -437,16 +435,6 @@ sub Run {
             ParamObject        => $ParamObject,
             LayoutObject       => $LayoutObject,
         );
-# ---
-# ITSMIncidentProblemManagement
-# ---
-        # impact field was found
-        if ( $DynamicFieldConfig->{Name} eq 'ITSMImpact' ) {
-
-            # store the reference to the impact field
-            $ImpactDynamicFieldConfig = $DynamicFieldConfig;
-        }
-# ---
     }
 
     # convert dynamic field values into a structure for ACLs
@@ -459,84 +447,6 @@ sub Run {
         $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicField } = $DynamicFieldValues{$DynamicField};
     }
     $GetParam{DynamicField} = \%DynamicFieldACLParameters;
-# ---
-# ITSMIncidentProblemManagement
-# ---
-    my %Service;
-
-    if ( $Self->{ITSMIncidentProblemManagement} ) {
-
-        # get needed stuff
-        $GetParam{DynamicField_ITSMCriticality} = $ParamObject->GetParam(Param => 'DynamicField_ITSMCriticality');
-        $GetParam{DynamicField_ITSMImpact}      = $ParamObject->GetParam(Param => 'DynamicField_ITSMImpact');
-        $GetParam{PriorityRC}                   = $ParamObject->GetParam(Param => 'PriorityRC');
-        $GetParam{ElementChanged}               = $ParamObject->GetParam(Param => 'ElementChanged') || '';
-
-        # check if priority needs to be recalculated
-        if ( $GetParam{ElementChanged} eq 'ServiceID' || $GetParam{ElementChanged} eq 'DynamicField_ITSMImpact' || $GetParam{ElementChanged} eq 'DynamicField_ITSMCriticality' ) {
-            $GetParam{PriorityRC} = 1;
-        }
-
-        if ( $GetParam{ServiceID} ) {
-
-            # get service
-            %Service = $Kernel::OM->Get('Kernel::System::Service')->ServiceGet(
-                ServiceID     => $GetParam{ServiceID},
-                IncidentState => $Config->{ShowIncidentState} || 0,
-                UserID        => $Self->{UserID},
-            );
-
-            if ( $GetParam{ElementChanged} eq 'ServiceID' ) {
-                $GetParam{DynamicField_ITSMCriticality} = $Service{Criticality};
-            }
-
-            # recalculate impact if impact is not set until now
-            if ( !$GetParam{DynamicField_ITSMImpact} && $GetParam{ElementChanged} ne 'DynamicField_ITSMImpact' ) {
-
-                # get default selection
-                my $DefaultSelection = $ImpactDynamicFieldConfig->{Config}->{DefaultValue};
-
-                if ($DefaultSelection) {
-
-                    # get default impact
-                    $GetParam{DynamicField_ITSMImpact} = $DefaultSelection;
-                    $GetParam{PriorityRC} = 1;
-                }
-            }
-
-            # recalculate priority
-            if ( $GetParam{PriorityRC} && $GetParam{DynamicField_ITSMImpact} ) {
-
-                # get priority
-                $GetParam{PriorityID} = $Kernel::OM->Get('Kernel::System::ITSMCIPAllocate')->PriorityAllocationGet(
-                    Criticality => $GetParam{DynamicField_ITSMCriticality} || $Service{Criticality},
-                    Impact      => $GetParam{DynamicField_ITSMImpact},
-                );
-            }
-        }
-
-        # no service was selected
-        else {
-
-            # do not show the default selection
-            $ImpactDynamicFieldConfig->{Config}->{DefaultValue} = '';
-
-            # show only the empty selection
-            $ImpactDynamicFieldConfig->{Config}->{PossibleValues} = {};
-            $GetParam{DynamicField_ITSMImpact} = '';
-        }
-
-        # set the selected impact and criticality
-        $DynamicFieldValues{ITSMCriticality} = $GetParam{DynamicField_ITSMCriticality};
-        $DynamicFieldValues{ITSMImpact}      = $GetParam{DynamicField_ITSMImpact};
-
-        # Send config data to JS.
-        $LayoutObject->AddJSData(
-            Key   => $Self->{Action} . 'ShowIncidentState',
-            Value => $Config->{ShowIncidentState},
-        );
-    }
-# ---
 
     # transform pending time, time stamp based on user time zone
     if (
@@ -852,8 +762,8 @@ sub Run {
             );
 
             # set simple IDs to pass them to the mask
-            for my $SplitedParam (qw(TypeID ServiceID SLAID PriorityID)) {
-                $SplitTicketParam{$SplitedParam} = $SplitTicketData{$SplitedParam};
+            for my $SplitParam (qw(TypeID ServiceID SLAID PriorityID)) {
+                $SplitTicketParam{$SplitParam} = $SplitTicketData{$SplitParam};
             }
 
             # set StateID as NextStateID
@@ -934,8 +844,8 @@ sub Run {
         if ( $SplitTicketParam{ResponsibleUserSelected} ) {
             $GetParam{NewResponsibleID} = $SplitTicketData{ResponsibleUserSelected};
         }
-        for my $SplitedParam (qw(TypeID ServiceID SLAID PriorityID)) {
-            $SplitTicketParam{$SplitedParam} = $SplitTicketData{$SplitedParam};
+        for my $SplitParam (qw(TypeID ServiceID SLAID PriorityID)) {
+            $SplitTicketParam{$SplitParam} = $SplitTicketData{$SplitParam};
         }
 
         # cycle trough the activated Dynamic Fields for this screen
@@ -1023,6 +933,15 @@ sub Run {
         my %ChangedElementsDFStart;
         my %ChangedStdFields;
 
+# Rother OSS / ITSMCore - calculate Priority via CIP matrix
+        if ( $CIPCalculate && $GetParam{DynamicField}{DynamicField_ITSMImpact}
+            && ( $GetParam{DynamicField}{DynamicField_ITSMCriticality} || $GetParam{ServiceID} ) ) {
+
+            # if we have an initial criticality and impact, trigger priority calculation
+            $ChangedElements{DynamicField_ITSMImpact} = 1;
+        }
+# EO ITSMCore
+
         my $LoopProtection = 100;
         my %StdFieldValues;
         my %DynFieldStates = (
@@ -1039,7 +958,7 @@ sub Run {
 
                 my %NewChangedElements;
 
-                # which standard fields to check - FieldID => GetParamValue (neccessary for Dest)
+                # which standard fields to check - FieldID => GetParamValue (necessary for Dest)
                 my %Check = (
                     Dest               => 'QueueID',
                     NewUserID          => 'NewUserID',
@@ -1115,12 +1034,53 @@ sub Run {
                         }
 
                         # autoselect
-                        elsif ( !$GetParam{QueueID} && $Autoselect && $Autoselect->{Dest} ) {
+                        if ( !$GetParam{QueueID} && $Autoselect && $Autoselect->{Dest} ) {
                             $GetParam{QueueID} = $FieldRestrictionsObject->Autoselect(
                                 PossibleValues => $StdFieldValues{QueueID},
                             ) || '';
                         }
                     }
+
+# Rother OSS / ITSMCore - calculate Priority via CIP matrix
+                    elsif ( $Field->{FieldID} eq 'PriorityID' && $CIPCalculate && $GetParam{DynamicField}{DynamicField_ITSMImpact} ) {
+
+                        # get the criticality either from the manually set dynamic field, or the service
+                        my $Criticality = $GetParam{DynamicField_ITSMCriticality};
+
+                        if ( !$Criticality && $GetParam{ServiceID} ) {
+                            my %Service = $ServiceObject->ServiceGet(
+                                ServiceID => $GetParam{ServiceID},
+                                UserID    => 1,
+                            );
+
+                            $Criticality = $Service{Criticality};
+                        }
+
+                        if ( $Criticality ) { 
+
+                            # recalculate the priority if any of the impacting elements changed
+                            if ( $ChangedElements{DynamicField_ITSMImpact} || $ChangedElements{ServiceID} || $ChangedElements{DynamicField_ITSMCriticality} ) {
+                                my $PriorityID = $CIPAllocateObject->PriorityAllocationGet(
+                                    Criticality => $Criticality,
+                                    Impact      => $GetParam{DynamicField}{DynamicField_ITSMImpact},
+                                );
+
+                                if ( $StdFieldValues{PriorityID}{ $PriorityID } && $PriorityID ne $GetParam{PriorityID} ) {
+                                    $GetParam{PriorityID}           = $PriorityID;
+                                    $NewChangedElements{PriorityID} = 1;
+                                    $ChangedStdFields{PriorityID}   = 1;
+                                }
+                            }
+
+                            # if we enforce CIPAllocation in any case delete all other priority options
+                            if ( $GetParam{PriorityID} && $CIPCalculate == 2 ) {
+                                $StdFieldValues{PriorityID} = {
+                                    $GetParam{PriorityID} => $StdFieldValues{PriorityID}{ $GetParam{PriorityID} },
+                                };
+                            }
+                        }
+                    }
+# EO ITSMCore
 
                     # check whether current selected value is still valid for the field
                     if (
@@ -1135,7 +1095,7 @@ sub Run {
                     }
 
                     # autoselect
-                    elsif ( !$GetParam{ $Field->{FieldID} } && $Autoselect && $Autoselect->{ $Field->{FieldID} } ) {
+                    if ( !$GetParam{ $Field->{FieldID} } && $Autoselect && $Autoselect->{ $Field->{FieldID} } ) {
                         $GetParam{ $Field->{FieldID} } = $FieldRestrictionsObject->Autoselect(
                             PossibleValues => $StdFieldValues{ $Field->{FieldID} },
                         ) || '';
@@ -1192,7 +1152,6 @@ sub Run {
                     Autoselect      => $Autoselect,
                     ACLPreselection => $ACLPreselection,
                     LoopProtection  => \$LoopProtection,
-                    InitialRun      => $InitialRun,
                 );
 
                 # combine FieldStates
@@ -1416,7 +1375,7 @@ sub Run {
             }
         }
 
-        my ( $NewQueueID, $From ) = split( /\|\|/, $Dest );
+        my ($NewQueueID) = split( /\|\|/, $Dest );
         if ( !$NewQueueID ) {
             $GetParam{OwnerAll} = 1;
         }
@@ -1471,6 +1430,41 @@ sub Run {
                 $ExpandCustomerName = 2;
             }
         }
+
+# Rother OSS / ITSMCore - calculate Priority via CIP matrix
+        if ( $CIPCalculate && $CIPCalculate == 2 && $GetParam{DynamicField}{DynamicField_ITSMImpact} ) {
+
+            # get the criticality either from the manually set dynamic field, or the service
+            my $Criticality = $GetParam{DynamicField_ITSMCriticality};
+
+            if ( !$Criticality && $GetParam{ServiceID} ) {
+                my %Service = $ServiceObject->ServiceGet(
+                    ServiceID => $GetParam{ServiceID},
+                    UserID    => 1,
+                );
+
+                $Criticality = $Service{Criticality};
+            }
+
+            if ( $Criticality ) { 
+                my $PriorityID = $CIPAllocateObject->PriorityAllocationGet(
+                    Criticality => $Criticality,
+                    Impact      => $GetParam{DynamicField}{DynamicField_ITSMImpact},
+                );
+ 
+                if ( $PriorityID ne $GetParam{PriorityID} ) {
+
+                    # this should never happen; we just enforce the prio and write an error to the log file here
+                    $Kernel::OM->Get('Kernel::System::Log')->Log(
+                        Priority => 'error',
+                        Message  => "Got PriorityID '$GetParam{PriorityID}', but CIP enforces '$PriorityID' - overriding the frontend value.",
+                    );
+
+                    $GetParam{PriorityID} = $PriorityID;
+                }
+            }
+        }
+# EO ITSMCore
 
         # skip validation of hidden fields
         my %Visibility;
@@ -2041,33 +2035,6 @@ sub Run {
                 UserID             => $Self->{UserID},
             );
         }
-# ---
-# ITSMIncidentProblemManagement
-# ---
-        if ( $Self->{ITSMIncidentProblemManagement} && $GetParam{ServiceID} && $Service{Criticality} && !$GetParam{DynamicField_ITSMCriticality} ) {
-
-            # get config for criticality dynamic field
-            my $CriticalityDynamicFieldConfig = $Kernel::OM->Get('Kernel::System::DynamicField')->DynamicFieldGet(
-                Name => 'ITSMCriticality',
-            );
-
-            # get possible values for criticality
-            my $CriticalityPossibleValues = $DynamicFieldBackendObject->PossibleValuesGet(
-                DynamicFieldConfig => $CriticalityDynamicFieldConfig,
-            );
-
-            # reverse the list to find out the key
-            my %ReverseCriticalityPossibleValues = reverse %{ $CriticalityPossibleValues };
-
-            # set the criticality
-            $DynamicFieldBackendObject->ValueSet(
-                DynamicFieldConfig => $CriticalityDynamicFieldConfig,
-                ObjectID           => $TicketID,
-                Value              => $ReverseCriticalityPossibleValues{ $Service{Criticality} },
-                UserID             => $Self->{UserID},
-            );
-        }
-# ---
 
         # get pre loaded attachment
         my @AttachmentData = $UploadCacheObject->FormIDGetAllFilesData(
@@ -2308,74 +2275,6 @@ sub Run {
                 %GetParam,
             );
         }
-# ---
-# ITSMIncidentProblemManagement
-# ---
-        if ( $Self->{ITSMIncidentProblemManagement} ) {
-
-            # get the temporarily links
-            my $TempLinkList = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkList(
-                Object => 'Ticket',
-                Key    => $Self->{FormID},
-                State  => 'Temporary',
-                UserID => $Self->{UserID},
-            );
-
-            if ( $TempLinkList && ref $TempLinkList eq 'HASH' && %{$TempLinkList} ) {
-
-                for my $TargetObjectOrg ( sort keys %{$TempLinkList} ) {
-
-                    # extract typelist
-                    my $TypeList = $TempLinkList->{$TargetObjectOrg};
-
-                    for my $Type ( sort keys %{$TypeList} ) {
-
-                        # extract direction list
-                        my $DirectionList = $TypeList->{$Type};
-
-                        for my $Direction ( sort keys %{$DirectionList} ) {
-
-                            for my $TargetKeyOrg ( sort keys %{ $DirectionList->{$Direction} } ) {
-
-                                # delete the temp link
-                                $Kernel::OM->Get('Kernel::System::LinkObject')->LinkDelete(
-                                    Object1 => 'Ticket',
-                                    Key1    => $Self->{FormID},
-                                    Object2 => $TargetObjectOrg,
-                                    Key2    => $TargetKeyOrg,
-                                    Type    => $Type,
-                                    UserID  => $Self->{UserID},
-                                );
-
-                                my $SourceObject = $TargetObjectOrg;
-                                my $SourceKey    = $TargetKeyOrg;
-                                my $TargetObject = 'Ticket';
-                                my $TargetKey    = $TicketID;
-
-                                if ( $Direction eq 'Target' ) {
-                                    $SourceObject = 'Ticket';
-                                    $SourceKey    = $TicketID;
-                                    $TargetObject = $TargetObjectOrg;
-                                    $TargetKey    = $TargetKeyOrg;
-                                }
-
-                                # add the permanently link
-                                my $Success = $Kernel::OM->Get('Kernel::System::LinkObject')->LinkAdd(
-                                    SourceObject => $SourceObject,
-                                    SourceKey    => $SourceKey,
-                                    TargetObject => $TargetObject,
-                                    TargetKey    => $TargetKey,
-                                    Type         => $Type,
-                                    State        => 'Valid',
-                                    UserID       => $Self->{UserID},
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-# ---
 
         # get redirect screen
         my $NextScreen = $Self->{Session}{UserCreateNextMask} || 'AgentTicketEmail';
@@ -2455,7 +2354,7 @@ sub Run {
 
                 my %NewChangedElements;
 
-                # which standard fields to check - FieldID => GetParamValue (neccessary for Dest)
+                # which standard fields to check - FieldID => GetParamValue (necessary for Dest)
                 my %Check = (
                     Dest               => 'QueueID',
                     NewUserID          => 'NewUserID',
@@ -2531,12 +2430,53 @@ sub Run {
                         }
 
                         # autoselect
-                        elsif ( !$GetParam{QueueID} && $Autoselect && $Autoselect->{Dest} ) {
+                        if ( !$GetParam{QueueID} && $Autoselect && $Autoselect->{Dest} ) {
                             $GetParam{QueueID} = $FieldRestrictionsObject->Autoselect(
                                 PossibleValues => $StdFieldValues{QueueID},
                             ) || '';
                         }
                     }
+
+# Rother OSS / ITSMCore - calculate Priority via CIP matrix
+                    elsif ( $Field->{FieldID} eq 'PriorityID' && $CIPCalculate && $GetParam{DynamicField}{DynamicField_ITSMImpact} ) {
+
+                        # get the criticality either from the manually set dynamic field, or the service
+                        my $Criticality = $GetParam{DynamicField_ITSMCriticality};
+
+                        if ( !$Criticality && $GetParam{ServiceID} ) {
+                            my %Service = $ServiceObject->ServiceGet(
+                                ServiceID => $GetParam{ServiceID},
+                                UserID    => 1,
+                            );
+
+                            $Criticality = $Service{Criticality};
+                        }
+
+                        if ( $Criticality ) { 
+
+                            # recalculate the priority if any of the impacting elements changed
+                            if ( $ChangedElements{DynamicField_ITSMImpact} || $ChangedElements{ServiceID} || $ChangedElements{DynamicField_ITSMCriticality} ) {
+                                my $PriorityID = $CIPAllocateObject->PriorityAllocationGet(
+                                    Criticality => $Criticality,
+                                    Impact      => $GetParam{DynamicField}{DynamicField_ITSMImpact},
+                                );
+
+                                if ( $StdFieldValues{PriorityID}{ $PriorityID } && $PriorityID ne $GetParam{PriorityID} ) {
+                                    $GetParam{PriorityID}           = $PriorityID;
+                                    $NewChangedElements{PriorityID} = 1;
+                                    $ChangedStdFields{PriorityID}   = 1;
+                                }
+                            }
+
+                            # if we enforce CIPAllocation in any case delete all other priority options
+                            if ( $GetParam{PriorityID} && $CIPCalculate == 2 ) {
+                                $StdFieldValues{PriorityID} = {
+                                    $GetParam{PriorityID} => $StdFieldValues{PriorityID}{ $GetParam{PriorityID} },
+                                };
+                            }
+                        }
+                    }
+# EO ITSMCore
 
                     # check whether current selected value is still valid for the field
                     if (
@@ -2551,7 +2491,7 @@ sub Run {
                     }
 
                     # autoselect
-                    elsif ( !$GetParam{ $Field->{FieldID} } && $Autoselect && $Autoselect->{ $Field->{FieldID} } ) {
+                    if ( !$GetParam{ $Field->{FieldID} } && $Autoselect && $Autoselect->{ $Field->{FieldID} } ) {
                         $GetParam{ $Field->{FieldID} } = $FieldRestrictionsObject->Autoselect(
                             PossibleValues => $StdFieldValues{ $Field->{FieldID} },
                         ) || '';
@@ -2661,7 +2601,7 @@ sub Run {
             if ( $DynamicFieldConfig->{Config}{MultiValue} && ref $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"} eq 'ARRAY' ) {
                 for my $i ( 0 .. $#{ $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"} } ) {
                     my $DataValues = $DynFieldStates{Fields}{$Name}{NotACLReducible}
-                        ? $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"}[$i]
+                        ? ( $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"}[$i] // '' )
                         :
                         (
                             $DynamicFieldBackendObject->BuildSelectionDataGet(
@@ -2677,7 +2617,28 @@ sub Run {
                         Name        => 'DynamicField_' . $DynamicFieldConfig->{Name} . "_$i",
                         Data        => $DataValues,
                         SelectedID  => $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"}[$i],
-                        Translation => $DynamicFieldConfig->{Config}->{TranslatableValues} || 0,
+                        Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
+                        Max         => 100,
+                    };
+                }
+
+                # add template value for keeping templates in line with ACLs
+                if ( !$DynFieldStates{Fields}{$Name}{NotACLReducible} ) {
+                    my $DataValues = (
+                        $DynamicFieldBackendObject->BuildSelectionDataGet(
+                            DynamicFieldConfig => $DynamicFieldConfig,
+                            PossibleValues     => $DynFieldStates{Fields}{$Name}{PossibleValues},
+                            Value              => [ $DynamicFieldConfig->{Config}{DefaultValue} // '' ],
+                            )
+                            || $DynFieldStates{Fields}{$Name}{PossibleValues}
+                    );
+
+                    # add dynamic field to the list of fields to update
+                    push @DynamicFieldAJAX, {
+                        Name        => 'DynamicField_' . $DynamicFieldConfig->{Name} . "_Template",
+                        Data        => $DataValues,
+                        SelectedID  => $DynamicFieldConfig->{Config}{DefaultValue} // '',
+                        Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
                         Max         => 100,
                     };
                 }
@@ -2686,7 +2647,7 @@ sub Run {
             }
 
             my $DataValues = $DynFieldStates{Fields}{$Name}{NotACLReducible}
-                ? $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"}
+                ? ( $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"} // '' )
                 :
                 (
                     $DynamicFieldBackendObject->BuildSelectionDataGet(
@@ -2702,7 +2663,7 @@ sub Run {
                 Name        => 'DynamicField_' . $DynamicFieldConfig->{Name},
                 Data        => $DataValues,
                 SelectedID  => $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"},
-                Translation => $DynamicFieldConfig->{Config}->{TranslatableValues} || 0,
+                Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
                 Max         => 100,
             };
         }
@@ -2717,7 +2678,7 @@ sub Run {
                 if ( $DynamicFieldConfig->{Config}{MultiValue} && ref $SetField->{Values}{$FrontendName} eq 'ARRAY' ) {
                     for my $i ( 0 .. $#{ $SetField->{Values}{$FrontendName} } ) {
                         my $DataValues = $SetField->{FieldStates}{$FrontendName}{NotACLReducible}
-                            ? $SetField->{Values}{$FrontendName}[$i]
+                            ? ( $SetField->{Values}{$FrontendName}[$i] // '' )
                             :
                             (
                                 $DynamicFieldBackendObject->BuildSelectionDataGet(
@@ -2733,7 +2694,28 @@ sub Run {
                             Name        => 'DynamicField_' . $FrontendName . "_$i",
                             Data        => $DataValues,
                             SelectedID  => $SetField->{Values}{$FrontendName}[$i],
-                            Translation => $DynamicFieldConfig->{Config}->{TranslatableValues} || 0,
+                            Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
+                            Max         => 100,
+                        };
+                    }
+
+                    # add template value for keeping templates in line with ACLs
+                    if ( !$SetField->{FieldStates}{$FrontendName}{NotACLReducible} ) {
+                        my $DataValues = (
+                            $DynamicFieldBackendObject->BuildSelectionDataGet(
+                                DynamicFieldConfig => $DynamicFieldConfig,
+                                PossibleValues     => $SetField->{FieldStates}{$FrontendName}{PossibleValues},
+                                Value              => [ $DynamicFieldConfig->{Config}{DefaultValue} // '' ],
+                                )
+                                || $SetField->{FieldStates}{$FrontendName}{PossibleValues}
+                        );
+
+                        # add dynamic field to the list of fields to update
+                        push @DynamicFieldAJAX, {
+                            Name        => 'DynamicField_' . $FrontendName . "_Template",
+                            Data        => $DataValues,
+                            SelectedID  => $DynamicFieldConfig->{Config}{DefaultValue} // '',
+                            Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
                             Max         => 100,
                         };
                     }
@@ -2742,7 +2724,7 @@ sub Run {
                 }
 
                 my $DataValues = $SetField->{FieldStates}{$FrontendName}{NotACLReducible}
-                    ? $SetField->{Values}{$FrontendName}
+                    ? ( $SetField->{Values}{$FrontendName} // '' )
                     :
                     (
                         $DynamicFieldBackendObject->BuildSelectionDataGet(
@@ -2758,7 +2740,7 @@ sub Run {
                     Name        => 'DynamicField_' . $FrontendName,
                     Data        => $DataValues,
                     SelectedID  => $SetField->{Values}{$FrontendName},
-                    Translation => $DynamicFieldConfig->{Config}->{TranslatableValues} || 0,
+                    Translation => $DynamicFieldConfig->{Config}{TranslatableValues} || 0,
                     Max         => 100,
                 };
             }
@@ -2832,7 +2814,7 @@ sub Run {
 
         my @TemplateAJAX;
 
-        # update ticket body and attachements if needed.
+        # update ticket body and attachments if needed.
         if ( $ChangedStdFields{StandardTemplateID} ) {
             my @TicketAttachments;
             my $TemplateText;
@@ -3878,23 +3860,6 @@ sub _MaskEmailNew {
             },
         );
     }
-# ---
-# ITSMIncidentProblemManagement
-# ---
-    # make sure to show the options block so that the "Link Ticket" option is shown
-    # even if spellchecker, address book and OptionCustomer is turned off
-    if ( $Self->{ITSMIncidentProblemManagement} && !$ShownOptionsBlock ) {
-        $LayoutObject->Block(
-            Name => 'TicketOptions',
-            Data => {
-                %Param,
-            },
-        );
-
-        # set flag to "true" in order to prevent calling the Options block again
-        $ShownOptionsBlock = 1;
-    }
-# ---
 
     # show attachments
     ATTACHMENT:
