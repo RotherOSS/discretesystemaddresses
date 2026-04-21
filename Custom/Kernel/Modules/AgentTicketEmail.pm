@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
+# Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 7fe4d4a79ce840c8431ad6df2059076489104f77 - Kernel/Modules/AgentTicketEmail.pm
+# $origin: otobo - ff9e297baf287e16071d3ac6ad7f6c13f11ac7fa - Kernel/Modules/AgentTicketEmail.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -52,16 +52,14 @@ sub new {
     if ( !$Self->{FormID} ) {
         $Self->{FormID} = $Kernel::OM->Get('Kernel::System::Web::UploadCache')->FormIDCreate();
     }
-# ---
 # ITSMIncidentProblemManagement
-# ---
 
     # Check if ITSMIncidentProblemManagement is used.
     my $OutputFilterConfig = $Kernel::OM->Get('Kernel::Config')->Get('Frontend::Output::FilterElementPost');
     if ( $OutputFilterConfig->{ITSMIncidentProblemManagement} ) {
         $Self->{ITSMIncidentProblemManagement} = 1;
     }
-# ---
+# EO ITSMIncidentProblemManagement
 
     # methods which are used to determine the possible values of the standard fields
     $Self->{FieldMethods} = [
@@ -352,12 +350,10 @@ sub Run {
 
     # get Dynamic fields form ParamObject
     my %DynamicFieldValues;
-# ---
 # ITSMIncidentProblemManagement
-# ---
     # to store the reference to the dynamic field for the impact
     my $ImpactDynamicFieldConfig;
-# ---
+# EO ITSMIncidentProblemManagement
 
     # get needed objects
     my $DynamicFieldBackendObject = $Kernel::OM->Get('Kernel::System::DynamicField::Backend');
@@ -384,16 +380,14 @@ sub Run {
             ParamObject        => $ParamObject,
             LayoutObject       => $LayoutObject,
         );
-# ---
 # ITSMIncidentProblemManagement
-# ---
         # impact field was found
         if ( $DynamicFieldConfig->{Name} eq 'ITSMImpact' ) {
 
             # store the reference to the impact field
             $ImpactDynamicFieldConfig = $DynamicFieldConfig;
         }
-# ---
+# EO ITSMIncidentProblemManagement
     }
 
     # convert dynamic field values into a structure for ACLs
@@ -406,9 +400,7 @@ sub Run {
         $DynamicFieldACLParameters{ 'DynamicField_' . $DynamicField } = $DynamicFieldValues{$DynamicField};
     }
     $GetParam{DynamicField} = \%DynamicFieldACLParameters;
-# ---
 # ITSMIncidentProblemManagement
-# ---
     my %Service;
 
     if ( $Self->{ITSMIncidentProblemManagement} ) {
@@ -483,7 +475,7 @@ sub Run {
             Value => $Config->{ShowIncidentState},
         );
     }
-# ---
+# EO ITSMIncidentProblemManagement
 
     # transform pending time, time stamp based on user time zone
     if (
@@ -2025,9 +2017,7 @@ sub Run {
                 UserID             => $Self->{UserID},
             );
         }
-# ---
 # ITSMIncidentProblemManagement
-# ---
         if ( $Self->{ITSMIncidentProblemManagement} && $GetParam{ServiceID} && $Service{Criticality} && !$GetParam{DynamicField_ITSMCriticality} ) {
 
             # get config for criticality dynamic field
@@ -2051,7 +2041,7 @@ sub Run {
                 UserID             => $Self->{UserID},
             );
         }
-# ---
+# EO ITSMIncidentProblemManagement
 
         # get pre loaded attachment
         my @AttachmentData = $UploadCacheObject->FormIDGetAllFilesData(
@@ -2291,9 +2281,7 @@ sub Run {
                 %GetParam,
             );
         }
-# ---
 # ITSMIncidentProblemManagement
-# ---
         if ( $Self->{ITSMIncidentProblemManagement} ) {
 
             # get the temporarily links
@@ -2358,7 +2346,7 @@ sub Run {
                 }
             }
         }
-# ---
+# EO ITSMIncidentProblemManagement
 
         # get redirect screen
         my $NextScreen = $Self->{Session}{UserCreateNextMask} || 'AgentTicketEmail';
@@ -3806,9 +3794,7 @@ sub _MaskEmailNew {
             },
         );
     }
-# ---
 # ITSMIncidentProblemManagement
-# ---
     # make sure to show the options block so that the "Link Ticket" option is shown
     # even if spellchecker, address book and OptionCustomer is turned off
     if ( $Self->{ITSMIncidentProblemManagement} && !$ShownOptionsBlock ) {
@@ -3822,7 +3808,7 @@ sub _MaskEmailNew {
         # set flag to "true" in order to prevent calling the Options block again
         $ShownOptionsBlock = 1;
     }
-# ---
+# EO ITSMIncidentProblemManagement
 
     # show attachments
     ATTACHMENT:

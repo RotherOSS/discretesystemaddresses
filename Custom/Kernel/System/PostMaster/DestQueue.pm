@@ -2,9 +2,9 @@
 # OTOBO is a web-based ticketing system for service organisations.
 # --
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
-# Copyright (C) 2019-2025 Rother OSS GmbH, https://otobo.io/
+# Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - c4729719b9788da163909113055de495fac35df4 - Kernel/System/PostMaster/DestQueue.pm
+# $origin: otobo - ff9e297baf287e16071d3ac6ad7f6c13f11ac7fa - Kernel/System/PostMaster/DestQueue.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -113,7 +113,7 @@ sub GetQueueID {
         }
 
         # Address/Email not matched with any that is configured in the system
-        #   or any error occured while checking it.
+        #   or any error occurred while checking it.
 
         $Self->{CommunicationLogObject}->ObjectLog(
             ObjectLogType => 'Message',
@@ -124,7 +124,7 @@ sub GetQueueID {
     }
 
     # If we get here means that none of the addresses in the message is defined as a system address
-    #   or an error occured while checking it.
+    #   or an error occurred while checking it.
 
 # Rother OSS / DiscreteSystemAddresses
 #    my $Queue   = $Kernel::OM->Get('Kernel::Config')->Get('PostmasterDefaultQueue');
