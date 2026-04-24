@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 800091b06ec8f5a82ebe43f3c45644cf09dab47a - Kernel/Modules/AgentTicketEmail.pm
+# $origin: otobo - 9b816e1169e8d7a897d5b78d49ccf36bf5c6daaa - Kernel/Modules/AgentTicketEmail.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -2328,13 +2328,6 @@ sub Run {
         if ( $ChangedElements{ServiceID} ) {
             $ChangedElements{CustomerUserID} = 1;
             $ChangedElements{CustomerID}     = 1;
-
-            if ( $GetParam{To} ) {
-                my %CustomerData = $CustomerUserObject->CustomerUserDataGet(
-                    User => $CustomerUser,
-                );
-                $GetParam{CustomerID} = $CustomerData{CustomerID};
-            }
         }
         my %ChangedElementsDFStart = %ChangedElements;
         my %ChangedStdFields       = $ElementChanged && $ElementChanged !~ /^DynamicField_/ ? %ChangedElements : ();
