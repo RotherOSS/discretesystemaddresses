@@ -11,7 +11,7 @@
     <Filelist>
         <File Permission="660" Location="Kernel/Autoload/TicketSubjectCleanInterdivisional.pm" />
         <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
-        <File Permission="660" Location="Kernel/Language/de_AddressPool.pm" />
+        <File Permission="660" Location="Kernel/Language/de_DiscreteSystemAddresses.pm" />
         <File Permission="660" Location="Custom/Kernel/System/PostMaster.pm" />
         <File Permission="660" Location="Custom/Kernel/System/SystemAddress.pm" />
         <File Permission="660" Location="Custom/Kernel/System/PostMaster/DestQueue.pm" />
