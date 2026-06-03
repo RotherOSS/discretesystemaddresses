@@ -21,6 +21,11 @@ package Kernel::Modules::AgentTicketMerge;
 use strict;
 use warnings;
 
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
 use Kernel::System::VariableCheck qw(:all);
 use Kernel::Language              qw(Translatable);
 use Mail::Address                 ();
@@ -30,10 +35,7 @@ our $ObjectManagerDisabled = 1;
 sub new {
     my ( $Type, %Param ) = @_;
 
-    my $Self = {%Param};
-    bless( $Self, $Type );
-
-    return $Self;
+    return bless {%Param}, $Type;
 }
 
 sub Run {
@@ -223,8 +225,8 @@ sub Run {
 
             # check forward email address(es)
             if ( $GetParam{To} ) {
-                for my $Email ( Mail::Address->parse( $GetParam{To} ) ) {
-                    my $Address = $Email->address();
+                my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+                for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $GetParam{To} ) ) {
 
 # Rother OSS / DiscreteSystemAddresses
 #                    if (
@@ -235,14 +237,14 @@ sub Run {
                         TicketID => $Self->{TicketID},
                     );
                     if ($IsLocal)
-# EO DiscreteSystemAddresses
                     {
+# EO DiscreteSystemAddresses
                         $LayoutObject->Block( Name => 'ToCustomerGenericServerErrorMsg' );
                         $Error{'ToInvalid'} = 'ServerError';
                     }
 
                     # check email address
-                    elsif ( !$CheckItemObject->CheckEmail( Address => $Address ) ) {
+                    elsif ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                         my $ToErrorMsg =
                             'To'
                             . $CheckItemObject->CheckErrorType()

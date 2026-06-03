@@ -21,6 +21,11 @@ package Kernel::Modules::AgentTicketEmailResend;
 use strict;
 use warnings;
 
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
 use Kernel::System::VariableCheck qw(:all);
 use Kernel::Language              qw(Translatable);
 use Mail::Address                 ();
@@ -47,7 +52,8 @@ sub new {
 sub Run {
     my ( $Self, %Param ) = @_;
 
-    my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $LayoutObject       = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
 
     if ( !$Self->{TicketID} ) {
         return $LayoutObject->ErrorScreen(
@@ -217,8 +223,8 @@ sub Run {
             # Check email address.
             my $CustomerErrorMsg = 'CustomerGenericServerErrorMsg';
             my $CustomerError    = '';
-            for my $Email ( Mail::Address->parse($CustomerElement) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $CustomerElement ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $CustomerErrorMsg = $CheckItemObject->CheckErrorType()
                         . 'ServerErrorMsg';
                     $CustomerError = 'ServerError';
@@ -234,7 +240,7 @@ sub Run {
             my $CustomerDisabled = '';
             my $CountAux         = $CustomerCounter++;
             if ( $CustomerError ne '' ) {
-                $CustomerDisabled = 'disabled="disabled"';
+                $CustomerDisabled = 'disabled';
                 $CountAux         = $Count . 'Error';
             }
 
@@ -283,8 +289,8 @@ sub Run {
             # check email address
             my $CustomerErrorMsgCc = 'CustomerGenericServerErrorMsg';
             my $CustomerErrorCc    = '';
-            for my $Email ( Mail::Address->parse($CustomerElementCc) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $CustomerElementCc ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $CustomerErrorMsgCc = $CheckItemObject->CheckErrorType()
                         . 'ServerErrorMsg';
                     $CustomerErrorCc = 'ServerError';
@@ -300,7 +306,7 @@ sub Run {
             my $CustomerDisabledCc = '';
             my $CountAuxCc         = $CustomerCounterCc++;
             if ( $CustomerErrorCc ne '' ) {
-                $CustomerDisabledCc = 'disabled="disabled"';
+                $CustomerDisabledCc = 'disabled';
                 $CountAuxCc         = $Count . 'Error';
             }
 
@@ -348,8 +354,8 @@ sub Run {
             # Check email address.
             my $CustomerErrorMsgBcc = 'CustomerGenericServerErrorMsg';
             my $CustomerErrorBcc    = '';
-            for my $Email ( Mail::Address->parse($CustomerElementBcc) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $CustomerElementBcc ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $CustomerErrorMsgBcc = $CheckItemObject->CheckErrorType()
                         . 'ServerErrorMsg';
                     $CustomerErrorBcc = 'ServerError';
@@ -365,7 +371,7 @@ sub Run {
             my $CustomerDisabledBcc = '';
             my $CountAuxBcc         = $CustomerCounterBcc++;
             if ( $CustomerErrorBcc ne '' ) {
-                $CustomerDisabledBcc = 'disabled="disabled"';
+                $CustomerDisabledBcc = 'disabled';
                 $CountAuxBcc         = $Count . 'Error';
             }
 
@@ -403,16 +409,13 @@ sub Run {
         LINE:
         for my $Line (qw(To Cc Bcc)) {
             next LINE if !$GetParam{$Line};
-            for my $Email ( Mail::Address->parse( $GetParam{$Line} ) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $GetParam{$Line} ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $Error{ $Line . 'ErrorType' } = $Line . $CheckItemObject->CheckErrorType() . 'ServerErrorMsg';
                     $Error{ $Line . 'Invalid' }   = 'ServerError';
                 }
                 my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
-# Rother OSS / DiscreteSystemAddresses
-                    TicketID => $Self->{TicketID},
-# EO DiscreteSystemAddresses
-                    Address => $Email->address()
+                    AddressObject => $Email,
                 );
                 if ($IsLocal) {
                     $Error{ $Line . 'IsLocalAddress' } = 'ServerError';
@@ -450,8 +453,8 @@ sub Run {
         LINE:
         for my $Line (qw(To Cc Bcc)) {
             next LINE if !$GetParam{$Line};
-            for my $Email ( Mail::Address->parse( $GetParam{$Line} ) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $GetParam{$Line} ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $Error{ $Line . 'Invalid' } = 'ServerError';
                 }
             }
@@ -812,8 +815,8 @@ sub Run {
         my $SystemAddress = $Kernel::OM->Get('Kernel::System::SystemAddress');
 
         # Get only email address in 'To' (just 'some@example.com').
-        for my $Email ( Mail::Address->parse( $Data{To} ) ) {
-            $Data{ToEmail} = $Email->address();
+        for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Data{To} ) ) {
+            $Data{ToEmail} = $EmailAddressObject->GetAddress( AddressObject => $Email );
         }
 
         # Find duplicate addresses.
@@ -821,8 +824,8 @@ sub Run {
         for my $Type (qw(To Cc Bcc)) {
             if ( $Data{$Type} ) {
                 my $NewLine = '';
-                for my $Email ( Mail::Address->parse( $Data{$Type} ) ) {
-                    my $Address = lc $Email->address();
+                for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Data{$Type} ) ) {
+                    my $Address = lc $EmailAddressObject->GetAddress( AddressObject => $Email );
 
                     # Only use email addresses with '@' inside.
                     if ( $Address && $Address =~ /@/ && !$Recipient{$Address} ) {
@@ -837,7 +840,7 @@ sub Run {
                             if ($NewLine) {
                                 $NewLine .= ', ';
                             }
-                            $NewLine .= $Email->format();
+                            $NewLine .= $EmailAddressObject->Format( AddressObject => $Email );
                         }
                     }
                 }
@@ -850,15 +853,15 @@ sub Run {
         LINE:
         for my $Line (qw(To Cc Bcc)) {
             next LINE if !$Data{$Line};
-            for my $Email ( Mail::Address->parse( $Data{$Line} ) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Data{$Line} ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $Error{ $Line . "Invalid" } = " ServerError";
                 }
             }
         }
         if ( $Data{From} ) {
-            for my $Email ( Mail::Address->parse( $Data{From} ) ) {
-                if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+            for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Data{From} ) ) {
+                if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                     $Error{"FromInvalid"} .= $CheckItemObject->CheckError();
                 }
             }
@@ -929,8 +932,9 @@ sub Run {
 sub _Mask {
     my ( $Self, %Param ) = @_;
 
-    my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
-    my $ConfigObject = $Kernel::OM->Get('Kernel::Config');
+    my $LayoutObject       = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $ConfigObject       = $Kernel::OM->Get('Kernel::Config');
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
 
     my $Config = $ConfigObject->Get("Ticket::Frontend::$Self->{Action}");
 
@@ -1081,10 +1085,10 @@ sub _Mask {
 
         # split Cc values
         my @EmailAddressesBcc;
-        for my $Email ( Mail::Address->parse( $Param{Bcc} ) ) {
+        for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Param{Bcc} ) ) {
 
             my %CustomerSearch = $CustomerUserObject->CustomerSearch(
-                PostMasterSearch => $Email->address(),
+                PostMasterSearch => $EmailAddressObject->GetAddress( AddressObject => $Email ),
                 Limit            => 1,
             );
 
@@ -1099,7 +1103,7 @@ sub _Mask {
             else {
                 push @EmailAddressesBcc, {
                     CustomerKey        => '',
-                    CustomerTicketText => $Email->[0] ? "$Email->[0] <$Email->[1]>" : "$Email->[1]",
+                    CustomerTicketText => $EmailAddressObject->Format( AddressObject => $Email ),
                 };
             }
         }
@@ -1117,10 +1121,10 @@ sub _Mask {
 
         # split Cc values
         my @EmailAddressesCc;
-        for my $Email ( Mail::Address->parse( $Param{Cc} ) ) {
+        for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Param{Cc} ) ) {
 
             my %CustomerSearch = $CustomerUserObject->CustomerSearch(
-                PostMasterSearch => $Email->address(),
+                PostMasterSearch => $EmailAddressObject->GetAddress( AddressObject => $Email ),
                 Limit            => 1,
             );
 
@@ -1135,7 +1139,7 @@ sub _Mask {
             else {
                 push @EmailAddressesCc, {
                     CustomerKey        => '',
-                    CustomerTicketText => $Email->[0] ? "$Email->[0] <$Email->[1]>" : "$Email->[1]",
+                    CustomerTicketText => $EmailAddressObject->Format( AddressObject => $Email ),
                 };
             }
         }
@@ -1153,10 +1157,10 @@ sub _Mask {
 
         # split To values
         my @EmailAddressesTo;
-        for my $Email ( Mail::Address->parse( $Param{To} ) ) {
+        for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Param{To} ) ) {
 
             my %CustomerSearch = $CustomerUserObject->CustomerSearch(
-                PostMasterSearch => $Email->address(),
+                PostMasterSearch => $EmailAddressObject->GetAddress( AddressObject => $Email ),
                 Limit            => 1,
             );
 
@@ -1171,7 +1175,7 @@ sub _Mask {
             else {
                 push @EmailAddressesTo, {
                     CustomerKey        => '',
-                    CustomerTicketText => $Email->[0] ? "$Email->[0] <$Email->[1]>" : "$Email->[1]",
+                    CustomerTicketText => $EmailAddressObject->Format( AddressObject => $Email ),
                 };
             }
         }

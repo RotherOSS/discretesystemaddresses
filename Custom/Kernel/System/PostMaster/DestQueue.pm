@@ -29,6 +29,7 @@ our @ObjectDependencies = (
 # EO DiscreteSystemAddresses
     'Kernel::System::Queue',
     'Kernel::System::SystemAddress',
+    'Kernel::System::EmailAddress',
 );
 
 sub new {
@@ -36,9 +37,6 @@ sub new {
 
     # allocate new hash for object
     my $Self = bless {}, $Type;
-
-    # get parser object
-    $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
@@ -73,27 +71,18 @@ sub GetQueueID {
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 # EO DiscreteSystemAddresses
 
-    # get addresses
-    my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $Recipient );
 
     # check addresses
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+    my @EmailAddresses     = $EmailAddressObject->ParseAddressLine( Line => $Recipient );
     EMAIL:
     for my $Email (@EmailAddresses) {
 
-        next EMAIL if !$Email;
+        next EMAIL unless $Email;
 
-        my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+        my $Address = $EmailAddressObject->GetAddress( AddressObject => $Email );
 
-        next EMAIL if !$Address;
-
-# Rother OSS / DiscreteSystemAddresses
-        # check if email exist in address pool
-        if ( $GetParam{AddressPool} ) {
-
-            next EMAIL if
-                ( $AddressPoolObject->PoolLookup( Address => $Address ) // '' ) ne $GetParam{AddressPool};
-        }
-# EO DiscreteSystemAddresses
+        next EMAIL unless $Address;
 
         # lookup queue id if recipiend address
         my $QueueID = $SystemAddressObject->SystemAddressQueueID(

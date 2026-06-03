@@ -18,9 +18,15 @@
 
 package Kernel::Output::HTML::ArticleAction::AgentTicketCompose;
 
+use v5.24;
 use strict;
 use warnings;
 
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
 use Kernel::Language qw(Translatable);
 
 our @ObjectDependencies = (
@@ -30,6 +36,7 @@ our @ObjectDependencies = (
     'Kernel::System::Queue',
     'Kernel::System::SystemAddress',
     'Kernel::System::Ticket',
+    'Kernel::System::EmailAddress',
 );
 
 sub new {
@@ -172,22 +179,23 @@ sub GetConfig {
     }
     my $RecipientCount = 0;
     if ($Recipients) {
-        my $EmailParser = Kernel::System::EmailParser->new(
-            %{$Self},
-            Mode => 'Standalone',
-        );
-        my @Addresses = $EmailParser->SplitAddressLine( Line => $Recipients );
+        my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+        my @Addresses          = $EmailAddressObject->ParseAddressLine( Line => $Recipients );
         ADDRESS:
         for my $Address (@Addresses) {
-            my $Email = $EmailParser->GetEmailAddress( Email => $Address );
-            next ADDRESS if !$Email;
+            my $Email = $EmailAddressObject->GetAddress( AddressObject => $Address );
+
+            next ADDRESS unless $Email;
+
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
                 Address => $Email,
 # Rother OSS / DiscreteSystemAddresses
                 TicketID => $Param{Ticket}->{TicketID},
 # EO DiscreteSystemAddresses
             );
+
             next ADDRESS if $IsLocal;
+
             $RecipientCount++;
         }
     }

@@ -26,6 +26,7 @@ use parent 'Kernel::System::Ticket::Article::Backend::MIMEBase';
 # core modules
 
 # CPAN modules
+use Email::Address::XS ();
 use Mail::Address ();
 
 # OTOBO modules
@@ -46,6 +47,7 @@ our @ObjectDependencies = (
     'Kernel::System::Ticket::Article',
     'Kernel::System::DateTime',
     'Kernel::System::MailQueue',
+    'Kernel::System::EmailAddress',
 );
 
 =head1 NAME
@@ -361,7 +363,7 @@ sub ArticleSend {
     $Kernel::OM->Get('Kernel::System::Log')->Log(
         Priority => 'info',
         Message  => sprintf(
-            "Queued email to '%s' from '%s'. HistoryType => %s, Subject => %s;",
+            q{Queued email to '%s' from '%s'. HistoryType => %s, Subject => %s;},
             $Param{To},
             $Param{From},
             $HistoryType,
@@ -572,16 +574,14 @@ sub SendAutoResponse {
     # get loop protection object
     my $LoopProtectionObject = $Kernel::OM->Get('Kernel::System::PostMaster::LoopProtection');
 
-    # create email parser object
-    my $EmailParser = Kernel::System::EmailParser->new(
-        Mode => 'Standalone',
-    );
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
 
     my @AutoReplyAddresses;
-    my @Addresses = $EmailParser->SplitAddressLine( Line => $OrigHeader{From} );
+    my @AddressObjects = $EmailAddressObject->ParseAddressLine( Line => $OrigHeader{From} );
     ADDRESS:
-    for my $Address (@Addresses) {
-        my $Email = $EmailParser->GetEmailAddress( Email => $Address );
+    for my $AddressObject (@AddressObjects) {
+        my $Email   = $EmailAddressObject->GetAddress( AddressObject => $AddressObject );
+        my $Address = $EmailAddressObject->Format( AddressObject => $AddressObject );
         if ( !$Email ) {
 
             # add it to ticket history
@@ -597,6 +597,7 @@ sub SendAutoResponse {
                 Priority => 'notice',
                 Message  => "Sent no auto response to '$Address' because of invalid address.",
             );
+
             next ADDRESS;
 
         }
@@ -616,12 +617,13 @@ sub SendAutoResponse {
                 Message  => "Sent no '$Param{AutoResponseType}' for Ticket ["
                     . "$Ticket{TicketNumber}] ($Email) because of loop protection."
             );
+
             next ADDRESS;
         }
         else {
 
             # increase loop count
-            return if !$LoopProtectionObject->SendEmail( To => $Email );
+            return unless $LoopProtectionObject->SendEmail( To => $Email );
         }
 
         # check if sender is e. g. MAILER-DAEMON or Postmaster
@@ -697,7 +699,10 @@ sub SendAutoResponse {
 
     # Format sender realname and address compliant to RFC 5322. This is relevant when the real name contain commas
     # or other special symbols.
-    my $From = Mail::Address->new( $AutoResponse{SenderRealname}, $AutoResponse{SenderAddress} );
+    my $From = $EmailAddressObject->Format(
+        Realname => $AutoResponse{SenderRealname},
+        Address  => $AutoResponse{SenderAddress},
+    );
 
     # send email
     my $ArticleID = $Self->ArticleSend(
@@ -706,7 +711,7 @@ sub SendAutoResponse {
         TicketID             => $Param{TicketID},
         HistoryType          => $HistoryType,
         HistoryComment       => "\%\%$AutoReplyAddresses",
-        From                 => $From->format(),
+        From                 => $From,
         To                   => $AutoReplyAddresses,
         Cc                   => $Cc,
         Charset              => 'utf-8',

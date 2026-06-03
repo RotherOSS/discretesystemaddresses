@@ -52,6 +52,7 @@ our @ObjectDependencies = (
     'Kernel::System::State',
     'Kernel::System::Ticket',
     'Kernel::System::Ticket::Article',
+    'Kernel::System::EmailAddress',
 );
 
 =head1 NAME
@@ -206,78 +207,78 @@ sub Run {
         ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 # EO DiscreteSystemAddresses
 
-        # Run the PreFilterModules.
-        # These filter modules may modify the email parameters in %GetParam, including
-        # the body and the attachments.
-        if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
+    # Run the PreFilterModules.
+    # These filter modules may modify the email parameters in %GetParam, including
+    # the body and the attachments.
+    if ( ref $ConfigObject->Get('PostMaster::PreFilterModule') eq 'HASH' ) {
 
-            my %Jobs = %{ $ConfigObject->Get('PostMaster::PreFilterModule') };
+        my %Jobs = %{ $ConfigObject->Get('PostMaster::PreFilterModule') };
 
-            # get main objects
-            my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
+        # get main objects
+        my $MainObject = $Kernel::OM->Get('Kernel::System::Main');
 
-            JOB:
-            for my $Job ( sort keys %Jobs ) {
+        JOB:
+        for my $Job ( sort keys %Jobs ) {
 
-                return unless $MainObject->Require( $Jobs{$Job}->{Module} );
+            return unless $MainObject->Require( $Jobs{$Job}->{Module} );
 
-                # Note that passing ParserObject to the constructor of the filter object
-                # allows the filter to modify the message itself. This is used in SMIME decryption.
-                my $FilterObject = $Jobs{$Job}->{Module}->new(
-                    %{$Self},
+            # Note that passing ParserObject to the constructor of the filter object
+            # allows the filter to modify the message itself. This is used in SMIME decryption.
+            my $FilterObject = $Jobs{$Job}->{Module}->new(
+                %{$Self},
+            );
+
+            if ( !$FilterObject ) {
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Error',
+                    Key           => 'Kernel::System::PostMaster',
+                    Value         => "new() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
                 );
+                next JOB;
+            }
 
-                if ( !$FilterObject ) {
-                    $Self->{CommunicationLogObject}->ObjectLog(
-                        ObjectLogType => 'Message',
-                        Priority      => 'Error',
-                        Key           => 'Kernel::System::PostMaster',
-                        Value         => "new() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
-                    );
-                    next JOB;
-                }
-
-                # modify params
-                my $Run = $FilterObject->Run(
-                    GetParam  => $GetParam,
-                    JobConfig => $Jobs{$Job},
-                    TicketID  => $TicketID,
-                    UserID    => $Self->{PostmasterUserID},
+            # modify params
+            my $Run = $FilterObject->Run(
+                GetParam  => $GetParam,
+                JobConfig => $Jobs{$Job},
+                TicketID  => $TicketID,
+                UserID    => $Self->{PostmasterUserID},
 # Rother OSS / DiscreteSystemAddresses
                     QueueID   => $Param{QueueID},
 # EO DiscreteSystemAddresses
+            );
+            if ( !$Run ) {
+                $Self->{CommunicationLogObject}->ObjectLog(
+                    ObjectLogType => 'Message',
+                    Priority      => 'Error',
+                    Key           => 'Kernel::System::PostMaster',
+                    Value         => "Execute Run() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
                 );
-                if ( !$Run ) {
-                    $Self->{CommunicationLogObject}->ObjectLog(
-                        ObjectLogType => 'Message',
-                        Priority      => 'Error',
-                        Key           => 'Kernel::System::PostMaster',
-                        Value         => "Execute Run() of PreFilterModule $Jobs{$Job}->{Module} not successfully!",
-                    );
-                }
             }
         }
+    }
 
-        # should I ignore the incoming mail?
-        if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
-            $Self->{CommunicationLogObject}->ObjectLog(
-                ObjectLogType => 'Message',
-                Priority      => 'Info',
-                Key           => 'Kernel::System::PostMaster',
-                Value         =>
-                    "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
-                    . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
-            );
+    # should I ignore the incoming mail?
+    if ( $GetParam->{'X-OTOBO-Ignore'} && $GetParam->{'X-OTOBO-Ignore'} =~ /(yes|true)/i ) {
+        $Self->{CommunicationLogObject}->ObjectLog(
+            ObjectLogType => 'Message',
+            Priority      => 'Info',
+            Key           => 'Kernel::System::PostMaster',
+            Value         =>
+                "Ignored Email (From: $GetParam->{'From'}, Message-ID: $GetParam->{'Message-ID'}) "
+                . "because the X-OTOBO-Ignore is set (X-OTOBO-Ignore: $GetParam->{'X-OTOBO-Ignore'}).",
+        );
 
-            return (5);
-        }
+        return (5);
+    }
 
-        #
-        # ticket section
-        #
+    #
+    # ticket section
+    #
 
-        # check if follow up (again, with new GetParam)
-        ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
+    # check if follow up (again, with new GetParam)
+    ( $Tn, $TicketID ) = $Self->CheckFollowUp( GetParam => $GetParam );
 
 # Rother OSS / DiscreteSystemAddresses
 
@@ -839,13 +840,12 @@ sub GetEmailParams {
     if ( !$GetParam{'X-Sender'} ) {
 
         # get sender email
-        my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine(
+        my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+        my @EmailAddresses     = $EmailAddressObject->ParseAddressLine(
             Line => $GetParam{From},
         );
         for my $Email (@EmailAddresses) {
-            $GetParam{'X-Sender'} = $Self->{ParserObject}->GetEmailAddress(
-                Email => $Email,
-            );
+            $GetParam{'X-Sender'} = $EmailAddressObject->GetAddress( AddressObject => $Email );
         }
     }
 
