@@ -19,9 +19,8 @@ package Kernel::System::PostMaster::Filter::SkipViaMessageID;
 use strict;
 use warnings;
 
-use Mail::Address;
-
 our @ObjectDependencies = (
+    'Kernel::System::EmailAddress',
     'Kernel::System::Log',
     'Kernel::System::PostMaster::AddressPool',
     'Kernel::System::SystemAddress',
@@ -34,9 +33,6 @@ sub new {
     # allocate new hash for object
     my $Self = {};
     bless( $Self, $Type );
-
-    # get parser object
-    $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
@@ -70,11 +66,13 @@ sub Run {
 
     return 1 if !%Article;
 
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+
     if ( !$Article{AmbiguousTicketIDs} ) {
-        my ($SenderEmail) = Mail::Address->parse( $Article{From} );
+        my ($SenderEmail) = $EmailAddressObject->ParseAddressLine( Line => $Article{From} );
 
         my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
-            Address => $SenderEmail->address(),
+            AddressObject => $SenderEmail,
         );
 
         # if we are reading a message sent via our OTOBO itself for the first time

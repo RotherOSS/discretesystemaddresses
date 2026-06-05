@@ -27,6 +27,7 @@ our @ObjectDependencies = (
     'Kernel::System::Queue',
     'Kernel::System::Ticket',
     'Kernel::System::LinkObject',
+    'Kernel::System::EmailAddress',
 );
 
 sub new {
@@ -35,9 +36,6 @@ sub new {
     # allocate new hash for object
     my $Self = {};
     bless( $Self, $Type );
-
-    # get parser object
-    $Self->{ParserObject} = $Param{ParserObject} || '';
 
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || '';
@@ -59,21 +57,16 @@ sub FilterPools {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
-    if ( !$Self->{ParserObject} ) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "Need ParserObject!",
-        );
-        return;
-    }
-
     if ( !IsHashRefWithData( $Param{Params} ) ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
             Message  => "Need Params as hash ref!",
         );
+
         return;
     }
+
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
 
     # get headers
     my %GetParam        = $Param{Params}->%*;
@@ -89,13 +82,13 @@ sub FilterPools {
 
         next HEADER if !$GetParam{$Header};
 
-        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
+        my @Emails = $EmailAddressObject->ParseAddressLine( Line => $GetParam{$Header} );
         EMAIL:
         for my $Email (@Emails) {
 
             next EMAIL if !$Email;
 
-            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+            my $Address = $EmailAddressObject->GetAddress( AddressObject => $Email );
 
             next EMAIL if !$Address;
 
@@ -119,13 +112,13 @@ sub FilterPools {
 
         next HEADER if !$GetParam{$Header};
 
-        my @Emails = $Self->{ParserObject}->SplitAddressLine( Line => $GetParam{$Header} );
+        my @Emails = $EmailAddressObject->ParseAddressLine( Line => $GetParam{$Header} );
         EMAIL:
         for my $Email (@Emails) {
 
             next EMAIL if !$Email;
 
-            my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+            my $Address = $EmailAddressObject->GetAddress( AddressObject => $Email );
 
             next EMAIL if !$Address;
 
