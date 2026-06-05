@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 6efdc7bf2a3325277cd79a60f0f2407f8ad59e87 - Kernel/System/PostMaster/DestQueue.pm
+# $origin: otobo - d7daa73ee3f43f1657cd683b6a1740bcc22d78d8 - Kernel/System/PostMaster/DestQueue.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -29,6 +29,7 @@ our @ObjectDependencies = (
 # EO DiscreteSystemAddresses
     'Kernel::System::Queue',
     'Kernel::System::SystemAddress',
+    'Kernel::System::EmailAddress',
 );
 
 sub new {
@@ -36,9 +37,6 @@ sub new {
 
     # allocate new hash for object
     my $Self = bless {}, $Type;
-
-    # get parser object
-    $Self->{ParserObject} = $Param{ParserObject} || die "Got no ParserObject!";
 
     # Get communication log object.
     $Self->{CommunicationLogObject} = $Param{CommunicationLogObject} || die "Got no CommunicationLogObject!";
@@ -73,18 +71,17 @@ sub GetQueueID {
     my $AddressPoolObject = $Kernel::OM->Get('Kernel::System::PostMaster::AddressPool');
 # EO DiscreteSystemAddresses
 
-    # get addresses
-    my @EmailAddresses = $Self->{ParserObject}->SplitAddressLine( Line => $Recipient );
-
     # check addresses
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+    my @EmailAddresses     = $EmailAddressObject->ParseAddressLine( Line => $Recipient );
     EMAIL:
     for my $Email (@EmailAddresses) {
 
-        next EMAIL if !$Email;
+        next EMAIL unless $Email;
 
-        my $Address = $Self->{ParserObject}->GetEmailAddress( Email => $Email );
+        my $Address = $EmailAddressObject->GetAddress( AddressObject => $Email );
 
-        next EMAIL if !$Address;
+        next EMAIL unless $Address;
 
 # Rother OSS / DiscreteSystemAddresses
         # check if email exist in address pool

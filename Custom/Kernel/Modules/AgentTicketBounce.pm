@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 6efdc7bf2a3325277cd79a60f0f2407f8ad59e87 - Kernel/Modules/AgentTicketBounce.pm
+# $origin: otobo - 9a4fa08cdd815798b29b6848547ecf5900d1d64a - Kernel/Modules/AgentTicketBounce.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -21,18 +21,20 @@ package Kernel::Modules::AgentTicketBounce;
 use strict;
 use warnings;
 
+# core modules
+
+# CPAN modules
+
+# OTOBO modules
 use Kernel::System::VariableCheck qw(:all);
 use Kernel::Language              qw(Translatable);
-use Mail::Address                 ();
 
 our $ObjectManagerDisabled = 1;
 
 sub new {
     my ( $Type, %Param ) = @_;
 
-    # allocate new hash for object
-    my $Self = {%Param};
-    bless( $Self, $Type );
+    my $Self = bless {%Param}, $Type;
 
     # get article ID
     $Self->{ArticleID} = $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'ArticleID' ) || '';
@@ -44,7 +46,8 @@ sub Run {
     my ( $Self, %Param ) = @_;
 
     # get layout object
-    my $LayoutObject = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $LayoutObject       = $Kernel::OM->Get('Kernel::Output::HTML::Layout');
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
 
     # check needed stuff
     for my $Needed (qw(ArticleID TicketID QueueID)) {
@@ -280,7 +283,7 @@ $Param{Signature}";
         my %Address = $Kernel::OM->Get('Kernel::System::Queue')->GetSystemAddress(
             QueueID => $Ticket{QueueID},
         );
-        $Article{From} = "$Address{RealName} <$Address{Email}>";
+        $Article{From} = $Address{FormattedAddress};
 
         # get next states
         my %NextStates = $TicketObject->TicketStateList(
@@ -374,24 +377,22 @@ $Param{Signature}";
         # get check item object
         my $CheckItemObject = $Kernel::OM->Get('Kernel::System::CheckItem');
 
-        for my $Email ( Mail::Address->parse( $Param{BounceTo} ) ) {
-            my $Address = $Email->address();
+        for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Param{BounceTo} ) ) {
 
 # Rother OSS / DiscreteSystemAddresses
-#            if ( $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress( Address => $Address ) )
+#            if ( $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress( AddressObject => $Email ) ) {
             my $IsLocal = $Kernel::OM->Get('Kernel::System::SystemAddress')->SystemAddressIsLocalAddress(
-                Address  => $Address,
-                TicketID => $Self->{TicketID},
+                AddressObject => $Email,
+                TicketID      => $Self->{TicketID},
             );
-            if ($IsLocal)
+            if ($IsLocal) {
 # EO DiscreteSystemAddresses
-            {
                 $LayoutObject->Block( Name => 'BounceToCustomerGenericServerErrorMsg' );
                 $Error{'BounceToInvalid'} = 'ServerError';
             }
 
             # check email address
-            elsif ( !$CheckItemObject->CheckEmail( Address => $Address ) ) {
+            elsif ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                 my $BounceToErrorMsg =
                     'BounceTo'
                     . $CheckItemObject->CheckErrorType()
@@ -409,8 +410,8 @@ $Param{Signature}";
             else {
 
                 # check email address(es)
-                for my $Email ( Mail::Address->parse( $Param{To} ) ) {
-                    if ( !$CheckItemObject->CheckEmail( Address => $Email->address() ) ) {
+                for my $Email ( $EmailAddressObject->ParseAddressLine( Line => $Param{To} ) ) {
+                    if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) ) {
                         my $ToErrorMsg =
                             'To'
                             . $CheckItemObject->CheckErrorType()

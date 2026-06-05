@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - ff9e297baf287e16071d3ac6ad7f6c13f11ac7fa - Kernel/System/SystemAddress.pm
+# $origin: otobo - 052638c278788b7e3b87676382c7d21749d018ea - Kernel/System/SystemAddress.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -18,11 +18,19 @@
 
 package Kernel::System::SystemAddress;
 
+use v5.24;
 use strict;
 use warnings;
 
+# core module
+
+# CPAN modules
+
+# OTOBO modules
+
 our @ObjectDependencies = (
     'Kernel::System::Cache',
+    'Kernel::System::EmailAddress',
     'Kernel::System::DB',
     'Kernel::System::Log',
     'Kernel::System::Valid',
@@ -39,7 +47,7 @@ Kernel::System::SystemAddress - all system address functions
 
 =head1 DESCRIPTION
 
-Global module to add/edit/update system addresses.
+Global module to add/edit/update system addresses. There is a system address for each queue.
 
 =head1 PUBLIC INTERFACE
 
@@ -52,11 +60,10 @@ create an object
 =cut
 
 sub new {
-    my ( $Type, %Param ) = @_;
+    my ($Type) = @_;
 
     # allocate new hash for object
-    my $Self = {};
-    bless( $Self, $Type );
+    my $Self = bless {}, $Type;
 
     $Self->{CacheType} = 'SystemAddress';
     $Self->{CacheTTL}  = 60 * 60 * 24 * 20;
@@ -93,12 +100,25 @@ sub SystemAddressAdd {
         }
     }
 
-    # check if a system address with this name already exists
-    if ( $Self->NameExistsCheck( Name => $Param{Name} ) ) {
+    # Only the plain address is relevant
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+    my $Address            = $EmailAddressObject->GetAddress( Email => $Param{Name} );
+    if ( !$Address ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "A system address with the name '$Param{Name}' already exists.",
+            Message  => "'$Param{Name}' is not an email address",
         );
+
+        return;
+    }
+
+    # check if a system address with this name already exists
+    if ( $Self->NameExistsCheck( Name => $Address ) ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => "A system address with the name '$Address' already exists.",
+        );
+
         return;
     }
 
@@ -106,12 +126,12 @@ sub SystemAddressAdd {
     my $DBObject = $Kernel::OM->Get('Kernel::System::DB');
 
     # insert new system address
-    return if !$DBObject->Do(
+    return unless $DBObject->Do(
         SQL => 'INSERT INTO system_address (value0, value1, valid_id, comments, queue_id, '
             . ' create_time, create_by, change_time, change_by)'
             . ' VALUES (?, ?, ?, ?, ?, current_timestamp, ?, current_timestamp, ?)',
         Bind => [
-            \$Param{Name},    \$Param{Realname}, \$Param{ValidID}, \$Param{Comment},
+            \$Address,        \$Param{Realname}, \$Param{ValidID}, \$Param{Comment},
             \$Param{QueueID}, \$Param{UserID},   \$Param{UserID},
         ],
     );
@@ -119,7 +139,7 @@ sub SystemAddressAdd {
     # get system address id
     $DBObject->Prepare(
         SQL   => 'SELECT id FROM system_address WHERE value0 = ? AND value1 = ?',
-        Bind  => [ \$Param{Name}, \$Param{Realname}, ],
+        Bind  => [ \$Address, \$Param{Realname}, ],
         Limit => 1,
     );
 
@@ -222,7 +242,7 @@ update system address with attributes
 
     $SystemAddressObject->SystemAddressUpdate(
         ID       => 1,
-        Name     => 'info@example.com',
+        Name     => 'info@example.com',   # actually the email
         Realname => 'Hotline',
         ValidID  => 1,
         QueueID  => 123,
@@ -246,28 +266,40 @@ sub SystemAddressUpdate {
         }
     }
 
-    # Check if a system address with this name already exists.
-    if (
-        $Self->NameExistsCheck(
-            ID   => $Param{ID},
-            Name => $Param{Name}
-        )
-        )
-    {
+    # Only the plain address is relevant
+    my $EmailAddressObject = $Kernel::OM->Get('Kernel::System::EmailAddress');
+    my $Address            = $EmailAddressObject->GetAddress( Email => $Param{Name} );
+    if ( !$Address ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
-            Message  => "A system address with the name '$Param{Name}' already exists.",
+            Message  => "'$Param{Name}' is not an email address",
         );
+
         return;
     }
 
-    # Check if a system address is used in some queue's or auto response's.
-    if ( $Self->SystemAddressIsUsed( SystemAddressID => $Param{ID} ) && $Param{ValidID} > 1 )
+    # Check whether another system address with this name already exists.
+    if (
+        $Self->NameExistsCheck(
+            ID   => $Param{ID},
+            Name => $Address,
+        )
+        )
     {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
+            Message  => "A system address with the name '$Address' already exists.",
+        );
+
+        return;
+    }
+
+    # Check whether the system address is used in any queue or auto response
+    if ( $Self->SystemAddressIsUsed( SystemAddressID => $Param{ID} ) && $Param{ValidID} > 1 ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
             Message  =>
-                "This system address '$Param{Name}' cannot be set to invalid, because it is used in one or more queue(s) or auto response(s).",
+                "This system address '$Address' cannot be set to invalid, because it is used in one or more queue(s) or auto response(s).",
         );
         return;
     }
@@ -277,7 +309,7 @@ sub SystemAddressUpdate {
         SQL => 'UPDATE system_address SET value0 = ?, value1 = ?, comments = ?, valid_id = ?, '
             . ' change_time = current_timestamp, change_by = ?, queue_id = ? WHERE id = ?',
         Bind => [
-            \$Param{Name},   \$Param{Realname}, \$Param{Comment}, \$Param{ValidID},
+            \$Address,       \$Param{Realname}, \$Param{Comment}, \$Param{ValidID},
             \$Param{UserID}, \$Param{QueueID},  \$Param{ID},
         ],
     );
@@ -378,21 +410,42 @@ for local addresses.
         # is not local
     }
 
+Alternatively an instance of Email::Address::XS may be passed. In that case only the bare address is checked.
+
+    my $AddressObject = Email::Address::XS->new(
+        'August Ausprobierer',
+        'gustl@testanything.org'
+    );
+
+    my $IsLocal = $SystemAddressObject->SystemAddressIsLocalAddress(
+        AddressObject => $AddressObject,
+    );
+
 =cut
 
 sub SystemAddressIsLocalAddress {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
-    for my $Needed (qw(Address)) {
-        if ( !$Param{$Needed} ) {
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "Need $Needed!",
-            );
-            return;
-        }
+    if ( !$Param{Address} && !$Param{AddressObject} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => 'Need either Address or AddressObject!'
+        );
+
+        return;
     }
+    if ( $Param{Address} && $Param{AddressObject} ) {
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => 'Need only one of Address or AddressObject!'
+        );
+
+        return;
+    }
+
+    # Traditionally this check is only looking a the bare address
+    my $Address = $Param{Address} // $Param{AddressObject}->address;
 
 # Rother OSS / DiscreteSystemAddresses
     # get objects
@@ -402,7 +455,7 @@ sub SystemAddressIsLocalAddress {
 
     # get address pool
     my $AddressPool = $AddressPoolObject->PoolLookup(
-        Address => $Param{Address},
+        Address => $Address,
     );
 
     # check if address exist in same address pool of ticket
@@ -431,7 +484,9 @@ sub SystemAddressIsLocalAddress {
     }
 # EO DiscreteSystemAddresses
 
-    return $Self->SystemAddressQueueID(%Param);
+    return $Self->SystemAddressQueueID(
+        Address => $Address,
+    );
 }
 
 =head2 SystemAddressQueueID()
@@ -597,7 +652,7 @@ sub NameExistsCheck {
 
 =head2 SystemAddressIsUsed()
 
-Return 1 if system address is used in one of the queue's or auto response's.
+Return 1 if system address is used in any queue or auto response.
 
     $SytemAddressIsUsed = $SystemAddressObject->SystemAddressIsUsed(
         SystemAddressID => 1,
