@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 052638c278788b7e3b87676382c7d21749d018ea - Kernel/System/SystemAddress.pm
+# $origin: otobo - 2cd2cec68f13e7c72aeefb069ea06d39e4e24f19 - Kernel/System/SystemAddress.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -427,7 +427,7 @@ sub SystemAddressIsLocalAddress {
     my ( $Self, %Param ) = @_;
 
     # check needed stuff
-    if ( !$Param{Address} && !$Param{AddressObject} ) {
+    if ( !$Param{Address} && !defined $Param{AddressObject} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
             Message  => 'Need either Address or AddressObject!'
@@ -435,7 +435,7 @@ sub SystemAddressIsLocalAddress {
 
         return;
     }
-    if ( $Param{Address} && $Param{AddressObject} ) {
+    if ( $Param{Address} && defined $Param{AddressObject} ) {
         $Kernel::OM->Get('Kernel::System::Log')->Log(
             Priority => 'error',
             Message  => 'Need only one of Address or AddressObject!'
@@ -444,8 +444,12 @@ sub SystemAddressIsLocalAddress {
         return;
     }
 
-    # Traditionally this check is only looking a the bare address
+    # Traditionally this check is only looking a the bare address.
     my $Address = $Param{Address} // $Param{AddressObject}->address;
+
+    # Note that a defined address object can still give an empty address.
+    # In this case we don't claim that it is a local address.
+    return unless $Address;
 
 # Rother OSS / DiscreteSystemAddresses
     # get objects
@@ -484,6 +488,7 @@ sub SystemAddressIsLocalAddress {
     }
 # EO DiscreteSystemAddresses
 
+    # Return the found queue id, despite the method name which hints at a boolean result
     return $Self->SystemAddressQueueID(
         Address => $Address,
     );
