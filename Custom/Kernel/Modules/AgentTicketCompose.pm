@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - b29efc250d16dc345e00f511cf904509bcd35d7c - Kernel/Modules/AgentTicketCompose.pm
+# $origin: otobo - b4ce183271e1526614219126933f204c0196ab34 - Kernel/Modules/AgentTicketCompose.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -51,7 +51,7 @@ sub new {
     {
         $Self->{LoadedFormDraftID} = $ParamObject->LoadFormDraft(
             FormDraftID => $ParamObject->GetParam( Param => 'FormDraftID' ),
-            UserID      => $Self->{UserID},
+            ObjectID    => $Self->{TicketID},
         );
     }
 
@@ -126,7 +126,7 @@ sub new {
         },
     ];
 
-    # dependancies of standard fields which are not defined via ACLs
+    # dependencies of standard fields which are not defined via ACLs
     $Self->{InternalDependancy} = {
     };
 
@@ -645,7 +645,6 @@ sub Run {
                     ObjectType => 'Ticket',
                     ObjectID   => $Self->{TicketID},
                     Action     => $Self->{Action},
-                    UserID     => $Self->{UserID},
                 );
                 DRAFT:
                 for my $FormDraft ( @{$FormDraftList} ) {
@@ -702,7 +701,7 @@ sub Run {
             elsif ( $FormDraftAction eq 'Delete' && $GetParam{FormDraftID} ) {
                 $FormDraftActionOk = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
                     FormDraftID => $GetParam{FormDraftID},
-                    UserID      => $Self->{UserID},
+                    ObjectID    => $Self->{TicketID},
                 );
             }
 
@@ -1154,7 +1153,7 @@ sub Run {
             next DYNAMICFIELD if !$Visibility{"DynamicField_$DynamicFieldConfig->{Name}"};
             next DYNAMICFIELD if $DynamicFieldConfig->{Readonly};
 
-            # set the object ID (TicketID or ArticleID) depending on the field configration
+            # set the object ID (TicketID or ArticleID) depending on the field configuration
             my $ObjectID = $DynamicFieldConfig->{ObjectType} eq 'Article'
                 ? $Self->{ArticleID} || $ArticleID
                 : $Self->{TicketID};
@@ -1216,7 +1215,7 @@ sub Run {
             $GetParam{FormDraftID}
             && !$Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
                 FormDraftID => $GetParam{FormDraftID},
-                UserID      => $Self->{UserID},
+                ObjectID    => $Self->{TicketID},
             )
             )
         {
@@ -1364,7 +1363,7 @@ sub Run {
 
                 my %NewChangedElements;
 
-                # which standard fields to check - FieldID => GetParamValue (neccessary for Dest)
+                # which standard fields to check - FieldID => GetParamValue (necessary for Dest)
                 my %Check = (
                     NextStateID => 'NextStateID',
                 );
@@ -1731,7 +1730,7 @@ sub Run {
                     # quote text
                     $Data{Body} = "<blockquote type=\"cite\">$Data{Body}</blockquote>\n";
 
-                    # cleanup not compat. tags
+                    # cleanup non-compatible tags
                     $Data{Body} = $LayoutObject->RichTextDocumentCleanup(
                         String => $Data{Body},
                     );
@@ -1963,7 +1962,7 @@ sub Run {
                     String => $ResponseFormat,
                 );
 
-                # restore qdata formatting for Output replacement
+                # restore data formatting for Output replacement
                 $ResponseFormat =~ s/&quot;/"/gi;
 
                 # html quote to have it correct in edit area
@@ -1971,7 +1970,7 @@ sub Run {
                     Text => $ResponseFormat,
                 );
 
-                # restore qdata formatting for Output replacement
+                # restore data formatting for Output replacement
                 $ResponseFormat =~ s/&quot;/"/gi;
             }
 
@@ -2040,7 +2039,7 @@ sub Run {
 
         my $Autoselect = $ConfigObject->Get('TicketACL::Autoselect') || undef;
 
-        # gather fields which are supposed to be hidden when autoselected
+        # gather fields which are supposed to be hidden when auto-selected
         my $HideAutoselectedJSON;
         if ($Autoselect) {
             my @HideAutoselected = grep { !ref( $Autoselect->{$_} ) && $Autoselect->{$_} == 2 } keys %{$Autoselect};
@@ -2111,7 +2110,7 @@ sub Run {
 
                 my %NewChangedElements;
 
-                # which standard fields to check - FieldID => GetParamValue (neccessary for Dest)
+                # which standard fields to check - FieldID => GetParamValue (necessary for Dest)
                 my %Check = (
                     NextStateID => 'NextStateID',
                 );
@@ -2751,8 +2750,8 @@ sub _Mask {
     if ( $Self->{LoadedFormDraftID} ) {
         $LoadedFormDraft = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftGet(
             FormDraftID => $Self->{LoadedFormDraftID},
+            ObjectID    => $Self->{TicketID},
             GetContent  => 0,
-            UserID      => $Self->{UserID},
         );
 
         my @Articles = $Kernel::OM->Get('Kernel::System::Ticket::Article')->ArticleList(

@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - b29efc250d16dc345e00f511cf904509bcd35d7c - Kernel/Modules/AgentTicketEmailOutbound.pm
+# $origin: otobo - b4ce183271e1526614219126933f204c0196ab34 - Kernel/Modules/AgentTicketEmailOutbound.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -46,7 +46,7 @@ sub new {
     {
         $Self->{LoadedFormDraftID} = $Kernel::OM->Get('Kernel::System::Web::Request')->LoadFormDraft(
             FormDraftID => $Kernel::OM->Get('Kernel::System::Web::Request')->GetParam( Param => 'FormDraftID' ),
-            UserID      => $Self->{UserID},
+            ObjectID    => $Self->{TicketID},
         );
     }
 
@@ -882,7 +882,6 @@ sub SendEmail {
                 ObjectType => 'Ticket',
                 ObjectID   => $Self->{TicketID},
                 Action     => $Self->{Action},
-                UserID     => $Self->{UserID},
             );
             DRAFT:
             for my $FormDraft ( @{$FormDraftList} ) {
@@ -939,7 +938,7 @@ sub SendEmail {
         elsif ( $FormDraftAction eq 'Delete' && $GetParam{FormDraftID} ) {
             $FormDraftActionOk = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
                 FormDraftID => $GetParam{FormDraftID},
-                UserID      => $Self->{UserID},
+                ObjectID    => $Self->{TicketID},
             );
         }
 
@@ -1491,7 +1490,7 @@ sub SendEmail {
         $GetParam{FormDraftID}
         && !$Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftDelete(
             FormDraftID => $GetParam{FormDraftID},
-            UserID      => $Self->{UserID},
+            ObjectID    => $Self->{TicketID},
         )
         )
     {
@@ -2049,8 +2048,8 @@ sub _Mask {
     if ( $Self->{LoadedFormDraftID} ) {
         $LoadedFormDraft = $Kernel::OM->Get('Kernel::System::FormDraft')->FormDraftGet(
             FormDraftID => $Self->{LoadedFormDraftID},
+            ObjectID    => $Self->{TicketID},
             GetContent  => 0,
-            UserID      => $Self->{UserID},
         );
 
         my @Articles = $Kernel::OM->Get('Kernel::System::Ticket::Article')->ArticleList(
