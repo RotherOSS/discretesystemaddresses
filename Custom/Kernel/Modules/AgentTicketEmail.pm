@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - c3bc6a2c08d7b7b7c24c608c25bf6eb489771034 - Kernel/Modules/AgentTicketEmail.pm
+# $origin: otobo - bd638ceea3f14f40393fe4cc6aea7091eb59b889 - Kernel/Modules/AgentTicketEmail.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -650,7 +650,7 @@ sub Run {
 
         # multiple addresses list
         # check email address
-        my $CountFrom = scalar @MultipleCustomer || 1;
+        my $CountFrom = @MultipleCustomer || 1;
         my %CustomerDataFrom;
         if ( $Article{CustomerUserID} ) {
             %CustomerDataFrom = $CustomerUserObject->CustomerUserDataGet(
@@ -665,7 +665,6 @@ sub Run {
             my $CustomerErrorMsg = 'CustomerGenericServerErrorMsg';
             my $CustomerDisabled = '';
             my $CustomerSelected = $CountFrom eq '1' ? 'checked ' : '';
-            my $EmailAddress     = $EmailAddressObject->GetAddress( AddressObject => $Email );
             if ( !$CheckItemObject->CheckEmail( AddressObject => $Email ) )
             {
                 $CustomerErrorMsg = $CheckItemObject->CheckErrorType()
@@ -673,8 +672,12 @@ sub Run {
                 $CustomerError = 'ServerError';
             }
 
+            my $Phrase       = $EmailAddressObject->GetRealName( AddressObject => $Email ) || '';
+            my $CustomerKey  = '';
+            my $EmailAddress = $EmailAddressObject->GetAddress( AddressObject => $Email );
+
             # check for duplicated entries
-            if ( defined $AddressesList{$Email} && $CustomerError eq '' ) {
+            if ( defined $AddressesList{$EmailAddress} && $CustomerError eq '' ) {
                 $CustomerErrorMsg = 'IsDuplicatedServerErrorMsg';
                 $CustomerError    = 'ServerError';
             }
@@ -684,8 +687,7 @@ sub Run {
                 $CountAux         = $CountFrom . 'Error';
             }
 
-            my $Phrase      = $EmailAddressObject->GetRealName( AddressObject => $Email ) || '';
-            my $CustomerKey = '';
+            # set correct CustomerKey
             if (
                 defined $CustomerDataFrom{UserEmail}
                 && $CustomerDataFrom{UserEmail} eq $EmailAddress
@@ -707,10 +709,7 @@ sub Run {
                 }
             }
 
-            my $CustomerElement = $EmailAddress;
-            if ($Phrase) {
-                $CustomerElement = $Phrase . " <$EmailAddress>";
-            }
+            my $CustomerElement = $EmailAddressObject->Format( AddressObject => $Email );
 
             if ( $CustomerSelected && $CustomerKey ) {
                 %CustomerData = $CustomerUserObject->CustomerUserDataGet(
@@ -883,6 +882,21 @@ sub Run {
             }
 
             $GetParam{DynamicField}{ 'DynamicField_' . $DynamicFieldConfig->{Name} } = $Value;
+
+            # pre-filling cache for reference field - necessary for ACL calculation of lens fields
+            my $IsReferenceField = $DynamicFieldBackendObject->HasBehavior(
+                Behavior           => 'IsReferenceField',
+                DynamicFieldConfig => $DynamicFieldConfig,
+            );
+
+            next DYNAMICFIELD unless $IsReferenceField;
+
+            $Kernel::OM->Get('Kernel::System::Web::FormCache')->SetFormData(
+                LayoutObject => $LayoutObject,
+                FormID       => $Self->{FormID},
+                Key          => 'PossibleValues_DynamicField_' . $DynamicFieldConfig->{Name},
+                Value        => $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"},
+            );
         }
 
         my $Autoselect = $ConfigObject->Get('TicketACL::Autoselect') || undef;
@@ -1585,7 +1599,7 @@ sub Run {
             );
 
             # check if just one customer user exists
-            # if just one, fillup CustomerUserID and CustomerID
+            # if just one, fill up CustomerUserID and CustomerID
             $Param{CustomerUserListCount} = 0;
             for my $KeyCustomerUser ( sort keys %CustomerUserList ) {
                 $Param{CustomerUserListCount}++;
@@ -2689,7 +2703,7 @@ sub Run {
                     );
                 }
 
-                # send a list of attachments in the upload cache back to the clientside JavaScript
+                # send a list of attachments in the upload cache back to the client-side JavaScript
                 # which renders then the list of currently uploaded attachments
                 @TicketAttachments = $UploadCacheObject->FormIDGetAllFilesMeta(
                     FormID => $Self->{FormID},

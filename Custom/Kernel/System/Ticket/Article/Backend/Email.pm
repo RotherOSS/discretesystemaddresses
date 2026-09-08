@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - ada85dafd597ad986588fd356523cedda4d39d27 - Kernel/System/Ticket/Article/Backend/Email.pm
+# $origin: otobo - 18724c1c9e6486b6e608065e2fee49d37ad8846e - Kernel/System/Ticket/Article/Backend/Email.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -26,7 +26,6 @@ use parent 'Kernel::System::Ticket::Article::Backend::MIMEBase';
 # core modules
 
 # CPAN modules
-use Email::Address::XS ();
 
 # OTOBO modules
 use Kernel::System::VariableCheck qw(:all);
