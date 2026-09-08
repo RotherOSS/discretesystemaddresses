@@ -4,7 +4,7 @@
 # Copyright (C) 2001-2020 OTRS AG, https://otrs.com/
 # Copyright (C) 2019-2026 Rother OSS GmbH, https://otobo.io/
 # --
-# $origin: otobo - 9b816e1169e8d7a897d5b78d49ccf36bf5c6daaa - Kernel/Modules/AgentTicketEmail.pm
+# $origin: otobo - 967533807ff4664ef1d2bf81179fca89cfb51b53 - Kernel/Modules/AgentTicketEmail.pm
 # --
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -651,7 +651,7 @@ sub Run {
 
         # multiple addresses list
         # check email address
-        my $CountFrom = scalar @MultipleCustomer || 1;
+        my $CountFrom = @MultipleCustomer || 1;
         my %CustomerDataFrom;
         if ( $Article{CustomerUserID} ) {
             %CustomerDataFrom = $CustomerUserObject->CustomerUserDataGet(
@@ -888,6 +888,21 @@ sub Run {
             }
 
             $GetParam{DynamicField}{ 'DynamicField_' . $DynamicFieldConfig->{Name} } = $Value;
+
+            # pre-filling cache for reference field - necessary for ACL calculation of lens fields
+            my $IsReferenceField = $DynamicFieldBackendObject->HasBehavior(
+                Behavior           => 'IsReferenceField',
+                DynamicFieldConfig => $DynamicFieldConfig,
+            );
+
+            next DYNAMICFIELD unless $IsReferenceField;
+
+            $Kernel::OM->Get('Kernel::System::Web::FormCache')->SetFormData(
+                LayoutObject => $LayoutObject,
+                FormID       => $Self->{FormID},
+                Key          => 'PossibleValues_DynamicField_' . $DynamicFieldConfig->{Name},
+                Value        => $GetParam{DynamicField}{"DynamicField_$DynamicFieldConfig->{Name}"},
+            );
         }
 
         my $Autoselect = $ConfigObject->Get('TicketACL::Autoselect') || undef;
@@ -1590,7 +1605,7 @@ sub Run {
             );
 
             # check if just one customer user exists
-            # if just one, fillup CustomerUserID and CustomerID
+            # if just one, fill up CustomerUserID and CustomerID
             $Param{CustomerUserListCount} = 0;
             for my $KeyCustomerUser ( sort keys %CustomerUserList ) {
                 $Param{CustomerUserListCount}++;
@@ -2277,11 +2292,11 @@ sub Run {
         }
 
         # get redirect screen
-        my $NextScreen = $Self->{Session}{UserCreateNextMask} || 'AgentTicketEmail';
+        my $NextScreen = $Self->{Session}{UserCreateNextMask} || 'AgentTicketEmail;Subaction=Created';
 
         # redirect
         return $LayoutObject->Redirect(
-            OP => "Action=$NextScreen;Subaction=Created;TicketID=$TicketID",
+            OP => "Action=$NextScreen;TicketID=$TicketID",
         );
     }
     elsif ( $Self->{Subaction} eq 'AJAXUpdate' ) {
@@ -2850,7 +2865,7 @@ sub Run {
                     );
                 }
 
-                # send a list of attachments in the upload cache back to the clientside JavaScript
+                # send a list of attachments in the upload cache back to the client-side JavaScript
                 # which renders then the list of currently uploaded attachments
                 @TicketAttachments = $UploadCacheObject->FormIDGetAllFilesMeta(
                     FormID => $Self->{FormID},
