@@ -8,6 +8,7 @@
     <License>GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007</License>
     <Description Lang="en">This extension facilitates communication between system addresses within OTOBO (e.g. in cc), by linking tickets in different queues to each other and using address pools to ensure a new article is added to all relevant tickets within the system (e.g. one in the IT Queue and one in HR).</Description>
     <Description Lang="de">Diese Erweiterung erleichtert die Kommunikation zwischen Systemadressen innerhalb von OTOBO (z. B. in cc), indem sie Tickets in verschiedenen Queues miteinander verknüpft und Adress-Bereiche verwendet, um sicherzustellen, dass ein neuer Artikel zu allen relevanten Tickets innerhalb des Systems hinzugefügt wird (z. B. eines in der IT-Queue und eine in der Personalabteilung).</Description>
+    <Description Lang="hu">Ez a kiterjesztés megkönnyíti a kommunikációt az OTOBO-n belüli rendszercímek között (például a másolati mezőben) azáltal, hogy összekapcsolja egymással a különböző várólistákban lévő jegyeket, és címkészleteket használ annak biztosítására, hogy egy új bejegyzés hozzáadásra kerüljön a rendszeren belüli összes érintett jegyhez (például egy az IT-várólistában és egy a HR-várólistában).</Description>
     <Filelist>
         <File Permission="660" Location="Kernel/Autoload/TicketSubjectCleanInterdivisional.pm" />
         <File Permission="660" Location="Kernel/Config/Files/XML/AddressPool.xml" />
@@ -45,6 +46,17 @@
         <br/>
         <br/>
         Sie sind im Begriff das OTOBO-Paket DiscreteSystemAddresses zu installieren.<br/>
+        <br/>
+        <br/>
+        ((enjoy))<br/>
+        <br/>
+    ]]></IntroInstall>
+    <IntroInstall Type="pre" Title="Telepítési információk" Lang="hu"><![CDATA[
+        <br/>
+        <strong>ÜDVÖZÖLJÜK!</strong>
+        <br/>
+        <br/>
+        Ön a DiscreteSystemAddresses OTOBO-csomag telepítésre készül.<br/>
         <br/>
         <br/>
         ((enjoy))<br/>
